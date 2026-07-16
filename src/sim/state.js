@@ -1,35 +1,38 @@
 ﻿(function initializeState(namespace) {
   function createInitialState() {
     const modelSummary = namespace.models.createModelSummary();
+    const generatedMap = namespace.mapGenerator.generateRegionMap({
+      width: namespace.data.mapDefaults.width,
+      height: namespace.data.mapDefaults.height,
+      seed: namespace.data.mapDefaults.seed,
+      terrainWeights: namespace.data.mapDefaults.terrainWeights
+    });
 
     return {
       meta: {
-        version: "0.1.0-day-2",
-        buildLabel: "Core Data Models"
+        version: '0.1.0-day-3',
+        buildLabel: 'Temporary Map Generation'
       },
       modelSummary,
       clock: {
         day: 1,
-        season: "Spring",
+        season: 'Spring',
         year: 1,
-        speed: "Paused"
+        speed: 'Paused'
       },
-      map: {
-        seed: "not-generated-yet",
-        regions: [],
-        selectedRegionId: null
-      },
+      map: generatedMap,
       player: {
-        civilization: "Unselected",
+        civilization: 'Unselected',
         cities: [],
         outposts: [],
         armies: []
       },
       storage: namespace.models.createResourceStockpile(),
       log: [
-        "Prototype shell initialized.",
+        'Prototype shell initialized.',
         `Core data models loaded: ${modelSummary.terrainTypes} terrain types, ${modelSummary.resourceTypes} resources, ${modelSummary.naturalTraits} natural traits.`,
-        "Day 2 target: region, resource, production slot, city, and outpost models exist in code."
+        `Day 3 map generated: ${generatedMap.summary.totalRegions} regions from seed ${generatedMap.seed}.`,
+        'Terrain tuning uses player weights plus north, center, and south climate bands.'
       ]
     };
   }

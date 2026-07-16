@@ -10,8 +10,8 @@
 
   const prototypeMilestone = {
     name: 'Prototype 0.1',
-    day: 2,
-    focus: 'Core data models',
+    day: 3,
+    focus: 'Temporary map generation',
     scope: [
       'Map generation',
       'Resources',
@@ -27,5 +27,19 @@
     normalSecondsPerDay: 10
   };
 
-  namespace.data = Object.freeze({ terrainTypes, prototypeMilestone, timeScale });
+  const mapDefaults = {
+    width: 12,
+    height: 8,
+    seed: 'eco-ruler-day-3',
+    terrainWeights: {
+      mountains: 16,
+      hills: 14,
+      plains: 24,
+      forests: 22,
+      desert: 14,
+      swamps: 10
+    }
+  };
+
+  namespace.data = Object.freeze({ terrainTypes, prototypeMilestone, timeScale, mapDefaults });
 })(window.EcoRuler = window.EcoRuler || {});
