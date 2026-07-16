@@ -384,7 +384,7 @@
       for (let x = 0; x < width; x += 1) {
         const terrain = terrainAt(terrainGrid, x, y);
         const waterBoost = hasTrait(traitGrid, x, y, 'river') || hasTrait(traitGrid, x, y, 'lake') || hasTrait(traitGrid, x, y, 'oasis') ? 0.35 : 0;
-        const baseChance = { plains: 0.22, forests: 0.2, swamps: 0.12, hills: 0.08, desert: 0.01, mountains: 0.02 }[terrain] || 0;
+        const baseChance = { plains: 0.22, forests: 0.2, swamps: 0.12, hills: 0.05, desert: 0.01, mountains: 0 }[terrain] || 0;
         if (random() < baseChance + waterBoost) {
           addTrait(traitGrid, x, y, 'high-fertility');
         }
@@ -402,11 +402,12 @@
       }
     }
 
-    const oasisCount = Math.min(3, Math.max(1, Math.floor(desertCandidates.length / 8)));
-    for (let index = 0; index < oasisCount && desertCandidates.length > 0; index += 1) {
-      const pick = weightedPick(desertCandidates, random).split(',').map(Number);
-      addTrait(traitGrid, pick[0], pick[1], 'oasis');
-    }
+    desertCandidates.forEach((candidate) => {
+      if (random() < 0.15) {
+        const pick = candidate.terrainId.split(',').map(Number);
+        addTrait(traitGrid, pick[0], pick[1], 'oasis');
+      }
+    });
   }
 
   function addDepositTraits(traitGrid, terrainGrid, width, height, random) {
@@ -414,28 +415,28 @@
       mountains: 0.34,
       hills: 0.22,
       desert: 0.08,
-      plains: 0.04,
-      forests: 0.03,
-      swamps: 0.01
+      plains: 0,
+      forests: 0,
+      swamps: 0
     });
 
     addRandomTraitByTerrain(traitGrid, terrainGrid, width, height, random, 'precious-vein', {
       mountains: 0.11,
       hills: 0.07,
       desert: 0.035,
-      plains: 0.01
+      plains: 0
     });
 
     addRandomTraitByTerrain(traitGrid, terrainGrid, width, height, random, 'gem-vein', {
       mountains: 0.045,
       hills: 0.025,
-      desert: 0.015
+      desert: 0.04
     });
 
     addRandomTraitByTerrain(traitGrid, terrainGrid, width, height, random, 'volcanic', {
       mountains: 0.055,
-      hills: 0.025,
-      desert: 0.015
+      hills: 0,
+      desert: 0
     });
 
     for (let y = 0; y < height; y += 1) {
@@ -457,10 +458,11 @@
     addLakeTraits(traitGrid, terrainGrid, width, height, random);
     addOasisTraits(traitGrid, terrainGrid, width, height, random);
     addRandomTraitByTerrain(traitGrid, terrainGrid, width, height, random, 'forest-density', {
-      forests: 0.72,
+      mountains: 0.02,
+      forests: 0.3,
       swamps: 0.18,
-      hills: 0.08,
-      plains: 0.03
+      hills: 0.1,
+      plains: 0.05
     });
     addFertilityTraits(traitGrid, terrainGrid, width, height, random);
     addDepositTraits(traitGrid, terrainGrid, width, height, random);
