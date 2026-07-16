@@ -116,6 +116,11 @@
     return namespace.mapGenerator.normalizeTerrainWeights(weights);
   }
 
+  function readClusterStrength(root) {
+    const input = root.querySelector('[data-cluster-strength]');
+    return namespace.mapGenerator.normalizeClusterStrength(input ? input.value : namespace.data.mapDefaults.clusterStrength);
+  }
+
   function readSeed(root) {
     const input = root.querySelector('[data-map-seed]');
     return input && input.value.trim() ? input.value.trim() : namespace.data.mapDefaults.seed;
@@ -124,13 +129,15 @@
   function generateMap(root, state, options = {}) {
     const seed = options.randomSeed ? `seed-${Date.now().toString(36)}` : readSeed(root);
     const terrainWeights = readTerrainWeights(root);
+    const clusterStrength = readClusterStrength(root);
     state.map = namespace.mapGenerator.generateRegionMap({
       width: namespace.data.mapDefaults.width,
       height: namespace.data.mapDefaults.height,
       seed,
+      clusterStrength,
       terrainWeights
     });
-    addLog(state, `Generated ${state.map.summary.totalRegions} regions from seed ${seed}.`);
+    addLog(state, `Generated ${state.map.summary.totalRegions} regions from seed ${seed} with cluster strength ${clusterStrength}.`);
     render(root, state);
   }
 
@@ -194,6 +201,10 @@
                 <span>Seed</span>
                 <input type='text' value='${state.map.seed}' data-map-seed />
               </label>
+              <label class='seed-row'>
+                <span>Cluster Strength</span>
+                <input type='number' min='0' max='100' step='1' value='${state.map.clusterStrength}' data-cluster-strength />
+              </label>
               <div class='terrain-weight-list'>
                 ${terrainWeightControls(data.terrainTypes, state.map.terrainWeights)}
               </div>
@@ -226,6 +237,7 @@
             <div class='map-toolbar-meta'>
               <span>${state.map.width} x ${state.map.height}</span>
               <span>${state.map.summary.totalRegions} regions</span>
+              <span>Cluster ${state.map.clusterStrength}</span>
             </div>
             <div class='toolbar-actions'>
               <button type='button' data-action='generate-map'>Generate</button>
@@ -249,6 +261,7 @@
           <section class='panel-block'>
             <h2>Map Summary</h2>
             <dl class='stat-list'>
+              <div><dt>Cluster Strength</dt><dd>${state.map.clusterStrength}</dd></div>
               ${terrainSummaryRows(state)}
             </dl>
           </section>

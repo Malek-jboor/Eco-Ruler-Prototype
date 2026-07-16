@@ -5,6 +5,7 @@
       width: namespace.data.mapDefaults.width,
       height: namespace.data.mapDefaults.height,
       seed: namespace.data.mapDefaults.seed,
+      clusterStrength: namespace.data.mapDefaults.clusterStrength,
       terrainWeights: namespace.data.mapDefaults.terrainWeights
     });
 
@@ -32,7 +33,7 @@
         'Prototype shell initialized.',
         `Core data models loaded: ${modelSummary.terrainTypes} terrain types, ${modelSummary.resourceTypes} resources, ${modelSummary.naturalTraits} natural traits.`,
         `Day 3 map generated: ${generatedMap.summary.totalRegions} regions from seed ${generatedMap.seed}.`,
-        'Terrain tuning uses player weights plus north, center, and south climate bands.'
+        `Cluster strength set to ${generatedMap.clusterStrength}: terrain groups prefer nearby compatible regions.`
       ]
     };
   }

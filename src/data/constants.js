@@ -31,6 +31,7 @@
     width: 12,
     height: 8,
     seed: 'eco-ruler-day-3',
+    clusterStrength: 60,
     terrainWeights: {
       mountains: 16,
       hills: 14,
