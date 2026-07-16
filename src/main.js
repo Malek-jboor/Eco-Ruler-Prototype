@@ -1,4 +1,4 @@
-(function bootEcoRuler(namespace) {
+﻿(function bootEcoRuler(namespace) {
   document.addEventListener("DOMContentLoaded", () => {
     const root = document.getElementById("app");
     if (!root) {

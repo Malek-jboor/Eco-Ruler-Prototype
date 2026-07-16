@@ -1,4 +1,4 @@
-(function initializeApp(namespace) {
+﻿(function initializeApp(namespace) {
   function terrainLegend(terrainTypes) {
     return terrainTypes
       .map((terrain) => `
@@ -10,12 +10,21 @@
       .join("");
   }
 
+  function categoryRows(categories, resources) {
+    return categories
+      .map((category) => {
+        const count = resources.filter((resource) => resource.category === category.id).length;
+        return `<div><dt>${category.label}</dt><dd>${count}</dd></div>`;
+      })
+      .join("");
+  }
+
   function logRows(log) {
     return log.map((entry) => `<li>${entry}</li>`).join("");
   }
 
   function render(root, state) {
-    const { data } = namespace;
+    const { data, resources } = namespace;
     root.innerHTML = `
       <header class="topbar">
         <div>
@@ -41,6 +50,12 @@
           <section class="panel-block">
             <h2>Terrain Types</h2>
             <ul class="legend-list">${terrainLegend(data.terrainTypes)}</ul>
+          </section>
+          <section class="panel-block">
+            <h2>Resource Groups</h2>
+            <dl class="stat-list compact-list">
+              ${categoryRows(resources.resourceCategories, resources.resourceTypes)}
+            </dl>
           </section>
         </aside>
 
@@ -69,6 +84,15 @@
               <div><dt>Terrain</dt><dd>Pending</dd></div>
               <div><dt>Natural Traits</dt><dd>Pending</dd></div>
               <div><dt>Production Slots</dt><dd>0 / 3</dd></div>
+            </dl>
+          </section>
+          <section class="panel-block">
+            <h2>Model Summary</h2>
+            <dl class="stat-list">
+              <div><dt>Terrain Types</dt><dd>${state.modelSummary.terrainTypes}</dd></div>
+              <div><dt>Resources</dt><dd>${state.modelSummary.resourceTypes}</dd></div>
+              <div><dt>Natural Traits</dt><dd>${state.modelSummary.naturalTraits}</dd></div>
+              <div><dt>Factories</dt><dd>${state.modelSummary.factories.length}</dd></div>
             </dl>
           </section>
           <section class="panel-block">
