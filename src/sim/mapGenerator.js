@@ -380,9 +380,13 @@
   }
 
   function addFertilityTraits(traitGrid, terrainGrid, width, height) {
+    const excludedTerrain = new Set(['mountains', 'desert']);
+
     for (let y = 0; y < height; y += 1) {
       for (let x = 0; x < width; x += 1) {
-        if (hasTrait(traitGrid, x, y, 'river') || hasTrait(traitGrid, x, y, 'lake')) {
+        const terrain = terrainAt(terrainGrid, x, y);
+        const hasWater = hasTrait(traitGrid, x, y, 'river') || hasTrait(traitGrid, x, y, 'lake');
+        if (hasWater && !excludedTerrain.has(terrain)) {
           addTrait(traitGrid, x, y, 'high-fertility');
         }
       }
