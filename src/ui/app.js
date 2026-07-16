@@ -5,6 +5,10 @@
     return namespace.data.terrainTypes.find((terrain) => terrain.id === terrainId);
   }
 
+  function traitById(traitId) {
+    return namespace.resources.naturalTraitById[traitId];
+  }
+
   function selectedRegion(state) {
     return state.map.regions.find((region) => region.id === state.map.selectedRegionId) || null;
   }
@@ -58,6 +62,28 @@
       .join('');
   }
 
+  function traitSummaryRows(state) {
+    return namespace.resources.naturalTraits
+      .map((trait) => {
+        const count = state.map.summary.traitCounts[trait.id] || 0;
+        return `<div><dt>${trait.label}</dt><dd>${count}</dd></div>`;
+      })
+      .join('');
+  }
+
+  function traitPills(traits) {
+    if (!traits.length) {
+      return `<span class='muted-text'>None</span>`;
+    }
+
+    return traits
+      .map((traitId) => {
+        const trait = traitById(traitId);
+        return `<span class='trait-pill'>${trait ? trait.label : traitId}</span>`;
+      })
+      .join('');
+  }
+
   function logRows(log) {
     return log.map((entry) => `<li>${entry}</li>`).join('');
   }
@@ -67,6 +93,7 @@
       .map((region) => {
         const terrain = terrainById(region.terrainId);
         const isSelected = region.id === state.map.selectedRegionId;
+        const traitMarkers = region.traitCodes.slice(0, 3).map((code) => `<span>${code}</span>`).join('');
         return `
           <button
             type='button'
@@ -78,6 +105,7 @@
           >
             <span class='region-code'>${region.terrainCode}</span>
             <span class='region-name'>${region.grid.x + 1},${region.grid.y + 1}</span>
+            <span class='region-traits'>${traitMarkers}</span>
           </button>
         `;
       })
@@ -100,7 +128,7 @@
     return `
       <div><dt>Selected Region</dt><dd>${region.name}</dd></div>
       <div><dt>Terrain</dt><dd>${terrain.label}</dd></div>
-      <div><dt>Natural Traits</dt><dd>${region.traits.length || 'None'}</dd></div>
+      <div><dt>Natural Traits</dt><dd><span class='trait-list'>${traitPills(region.traits)}</span></dd></div>
       <div><dt>Production Slots</dt><dd>${openSlots} / ${region.productionSlots.length}</dd></div>
       <div><dt>Neighbors</dt><dd>${region.neighbors.length}</dd></div>
       <div><dt>Climate Band</dt><dd>${region.notes.replace(' climate band', '')}</dd></div>
@@ -137,7 +165,7 @@
       clusterStrength,
       terrainWeights
     });
-    addLog(state, `Generated ${state.map.summary.totalRegions} regions from seed ${seed} with cluster strength ${clusterStrength}.`);
+    addLog(state, `Generated ${state.map.summary.totalRegions} regions, ${state.map.summary.traitBearingRegions} with natural traits.`);
     render(root, state);
   }
 
@@ -146,7 +174,7 @@
     const region = selectedRegion(state);
     if (region) {
       const terrain = terrainById(region.terrainId);
-      addLog(state, `Selected ${region.name}: ${terrain.label}.`);
+      addLog(state, `Selected ${region.name}: ${terrain.label}, ${region.traits.length} natural traits.`);
     }
     render(root, state);
   }
@@ -232,12 +260,12 @@
           <div class='map-toolbar'>
             <div>
               <p class='eyebrow'>World Map</p>
-              <h2>Temporary Region Map</h2>
+              <h2>Natural Layer Map</h2>
             </div>
             <div class='map-toolbar-meta'>
               <span>${state.map.width} x ${state.map.height}</span>
               <span>${state.map.summary.totalRegions} regions</span>
-              <span>Cluster ${state.map.clusterStrength}</span>
+              <span>${state.map.summary.traitBearingRegions} trait regions</span>
             </div>
             <div class='toolbar-actions'>
               <button type='button' data-action='generate-map'>Generate</button>
@@ -262,7 +290,14 @@
             <h2>Map Summary</h2>
             <dl class='stat-list'>
               <div><dt>Cluster Strength</dt><dd>${state.map.clusterStrength}</dd></div>
+              <div><dt>Trait Regions</dt><dd>${state.map.summary.traitBearingRegions}</dd></div>
               ${terrainSummaryRows(state)}
+            </dl>
+          </section>
+          <section class='panel-block'>
+            <h2>Natural Traits</h2>
+            <dl class='stat-list compact-traits'>
+              ${traitSummaryRows(state)}
             </dl>
           </section>
           <section class='panel-block'>

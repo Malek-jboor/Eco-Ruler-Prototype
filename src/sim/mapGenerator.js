@@ -55,6 +55,20 @@
     swamps: 'SWP'
   };
 
+  const traitAbbreviations = {
+    river: 'Riv',
+    lake: 'Lak',
+    coast: 'Sea',
+    oasis: 'Oas',
+    'high-fertility': 'Fer',
+    'forest-density': 'Den',
+    'mineral-vein': 'Min',
+    'precious-vein': 'Prc',
+    'gem-vein': 'Gem',
+    volcanic: 'Vol',
+    'rich-deposit': 'Rich'
+  };
+
   function hashSeed(seed) {
     const text = String(seed || 'eco-ruler');
     let hash = 2166136261;
@@ -265,33 +279,233 @@
     return nextGrid;
   }
 
-  function summarizeTerrain(regions) {
+  function createTraitGrid(width, height) {
+    return Array.from({ length: height }, () => Array.from({ length: width }, () => new Set()));
+  }
+
+  function addTrait(traitGrid, x, y, traitId) {
+    traitGrid[y][x].add(traitId);
+  }
+
+  function hasTrait(traitGrid, x, y, traitId) {
+    return traitGrid[y][x].has(traitId);
+  }
+
+  function centralEdgeIndexes(length) {
+    const center = Math.floor(length / 2);
+    const start = Math.max(0, center - 1);
+    const end = Math.min(length - 1, center + 1);
+    return Array.from({ length: end - start + 1 }, (_, index) => start + index);
+  }
+
+  function addCoastTraits(traitGrid, width, height) {
+    centralEdgeIndexes(width).forEach((x) => {
+      addTrait(traitGrid, x, 0, 'coast');
+      addTrait(traitGrid, x, height - 1, 'coast');
+    });
+
+    centralEdgeIndexes(height).forEach((y) => {
+      addTrait(traitGrid, 0, y, 'coast');
+      addTrait(traitGrid, width - 1, y, 'coast');
+    });
+  }
+
+  function chooseRiverStart(width, height, random) {
+    const center = Math.floor(width / 2);
+    return Math.max(1, Math.min(width - 2, center + Math.floor(random() * 5) - 2));
+  }
+
+  function addRiverTraits(traitGrid, terrainGrid, width, height, random) {
+    const riverCount = width >= 10 ? 2 : 1;
+
+    for (let riverIndex = 0; riverIndex < riverCount; riverIndex += 1) {
+      let x = riverIndex === 0 ? chooseRiverStart(width, height, random) : Math.max(1, Math.min(width - 2, Math.floor(width * (0.25 + random() * 0.5))));
+      const maxLength = riverIndex === 0 ? height : Math.max(5, Math.floor(height * 0.72));
+
+      for (let y = 0; y < maxLength; y += 1) {
+        addTrait(traitGrid, x, y, 'river');
+
+        const candidates = [-1, 0, 1].map((dx) => {
+          const nx = Math.max(0, Math.min(width - 1, x + dx));
+          const ny = Math.min(height - 1, y + 1);
+          const terrain = terrainGrid[ny][nx];
+          const terrainPreference = {
+            mountains: 0.55,
+            hills: 0.9,
+            plains: 1.35,
+            forests: 1.25,
+            desert: 0.55,
+            swamps: 1.2
+          }[terrain] || 1;
+          const centerPull = 1 - Math.abs(nx - width / 2) / width;
+          return { dx, weight: terrainPreference + centerPull + random() * 0.35 };
+        });
+        x = Math.max(0, Math.min(width - 1, x + weightedPick(candidates.map((candidate) => ({ terrainId: candidate.dx, weight: candidate.weight })), random)));
+      }
+    }
+  }
+
+  function terrainAt(terrainGrid, x, y) {
+    return terrainGrid[y][x];
+  }
+
+  function addRandomTraitByTerrain(traitGrid, terrainGrid, width, height, random, traitId, terrainChance) {
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const terrain = terrainAt(terrainGrid, x, y);
+        const chance = terrainChance[terrain] || 0;
+        if (random() < chance) {
+          addTrait(traitGrid, x, y, traitId);
+        }
+      }
+    }
+  }
+
+  function addLakeTraits(traitGrid, terrainGrid, width, height, random) {
+    const candidates = [];
+    for (let y = 1; y < height - 1; y += 1) {
+      for (let x = 1; x < width - 1; x += 1) {
+        const terrain = terrainAt(terrainGrid, x, y);
+        const nearRiver = hasTrait(traitGrid, x, y, 'river') ? 1 : 0;
+        const weight = ({ plains: 2.1, forests: 1.8, swamps: 1.9, hills: 1, mountains: 0.25, desert: 0.15 }[terrain] || 0.6) + nearRiver * 1.4;
+        candidates.push({ terrainId: `${x},${y}`, weight });
+      }
+    }
+
+    const lakeCount = Math.max(1, Math.round((width * height) / 70));
+    for (let index = 0; index < lakeCount; index += 1) {
+      const pick = weightedPick(candidates, random).split(',').map(Number);
+      addTrait(traitGrid, pick[0], pick[1], 'lake');
+    }
+  }
+
+  function addFertilityTraits(traitGrid, terrainGrid, width, height, random) {
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const terrain = terrainAt(terrainGrid, x, y);
+        const waterBoost = hasTrait(traitGrid, x, y, 'river') || hasTrait(traitGrid, x, y, 'lake') || hasTrait(traitGrid, x, y, 'oasis') ? 0.35 : 0;
+        const baseChance = { plains: 0.22, forests: 0.2, swamps: 0.12, hills: 0.08, desert: 0.01, mountains: 0.02 }[terrain] || 0;
+        if (random() < baseChance + waterBoost) {
+          addTrait(traitGrid, x, y, 'high-fertility');
+        }
+      }
+    }
+  }
+
+  function addOasisTraits(traitGrid, terrainGrid, width, height, random) {
+    const desertCandidates = [];
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        if (terrainAt(terrainGrid, x, y) === 'desert' && !hasTrait(traitGrid, x, y, 'coast')) {
+          desertCandidates.push({ terrainId: `${x},${y}`, weight: 1 + random() });
+        }
+      }
+    }
+
+    const oasisCount = Math.min(3, Math.max(1, Math.floor(desertCandidates.length / 8)));
+    for (let index = 0; index < oasisCount && desertCandidates.length > 0; index += 1) {
+      const pick = weightedPick(desertCandidates, random).split(',').map(Number);
+      addTrait(traitGrid, pick[0], pick[1], 'oasis');
+    }
+  }
+
+  function addDepositTraits(traitGrid, terrainGrid, width, height, random) {
+    addRandomTraitByTerrain(traitGrid, terrainGrid, width, height, random, 'mineral-vein', {
+      mountains: 0.34,
+      hills: 0.22,
+      desert: 0.08,
+      plains: 0.04,
+      forests: 0.03,
+      swamps: 0.01
+    });
+
+    addRandomTraitByTerrain(traitGrid, terrainGrid, width, height, random, 'precious-vein', {
+      mountains: 0.11,
+      hills: 0.07,
+      desert: 0.035,
+      plains: 0.01
+    });
+
+    addRandomTraitByTerrain(traitGrid, terrainGrid, width, height, random, 'gem-vein', {
+      mountains: 0.045,
+      hills: 0.025,
+      desert: 0.015
+    });
+
+    addRandomTraitByTerrain(traitGrid, terrainGrid, width, height, random, 'volcanic', {
+      mountains: 0.055,
+      hills: 0.025,
+      desert: 0.015
+    });
+
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const hasDeposit = ['mineral-vein', 'precious-vein', 'gem-vein', 'volcanic'].some((traitId) => hasTrait(traitGrid, x, y, traitId));
+        if (hasDeposit && random() < 0.32) {
+          addTrait(traitGrid, x, y, 'rich-deposit');
+        }
+      }
+    }
+  }
+
+  function addNaturalTraits(terrainGrid, width, height, seed) {
+    const random = createRandom(`${seed}:natural-layer`);
+    const traitGrid = createTraitGrid(width, height);
+
+    addCoastTraits(traitGrid, width, height);
+    addRiverTraits(traitGrid, terrainGrid, width, height, random);
+    addLakeTraits(traitGrid, terrainGrid, width, height, random);
+    addOasisTraits(traitGrid, terrainGrid, width, height, random);
+    addRandomTraitByTerrain(traitGrid, terrainGrid, width, height, random, 'forest-density', {
+      forests: 0.72,
+      swamps: 0.18,
+      hills: 0.08,
+      plains: 0.03
+    });
+    addFertilityTraits(traitGrid, terrainGrid, width, height, random);
+    addDepositTraits(traitGrid, terrainGrid, width, height, random);
+
+    return traitGrid.map((row) => row.map((traitSet) => Array.from(traitSet)));
+  }
+
+  function summarizeMap(regions) {
     const terrainCounts = {};
+    const traitCounts = {};
     namespace.data.terrainTypes.forEach((terrain) => {
       terrainCounts[terrain.id] = 0;
+    });
+    namespace.resources.naturalTraits.forEach((trait) => {
+      traitCounts[trait.id] = 0;
     });
 
     regions.forEach((region) => {
       terrainCounts[region.terrainId] += 1;
+      region.traits.forEach((traitId) => {
+        traitCounts[traitId] += 1;
+      });
     });
 
     return {
       totalRegions: regions.length,
-      terrainCounts
+      terrainCounts,
+      traitCounts,
+      traitBearingRegions: regions.filter((region) => region.traits.length > 0).length
     };
   }
 
-  function buildRegionsFromTerrainGrid(terrainGrid, width, height) {
+  function buildRegionsFromTerrainGrid(terrainGrid, traitGrid, width, height) {
     const regions = [];
 
     for (let y = 0; y < height; y += 1) {
       const band = bandForRow(y, height);
       for (let x = 0; x < width; x += 1) {
         const terrainId = terrainGrid[y][x];
+        const traits = traitGrid[y][x];
         const region = namespace.models.createRegion({
           id: regionIdFor(x, y),
           name: `Region ${x + 1}-${y + 1}`,
           terrainId,
+          traits,
           neighbors: neighborsFor(x, y, width, height),
           discovered: true,
           notes: `${band} climate band`
@@ -299,6 +513,7 @@
 
         region.grid = { x, y };
         region.terrainCode = terrainCodes[terrainId] || terrainId.slice(0, 3).toUpperCase();
+        region.traitCodes = traits.map((traitId) => traitAbbreviations[traitId] || traitId.slice(0, 3));
         regions.push(region);
       }
     }
@@ -316,7 +531,8 @@
     const random = createRandom(`${seed}:${clusterStrength}`);
     const initialGrid = createInitialTerrainGrid(width, height, terrainWeights, random);
     const terrainGrid = smoothTerrainGrid(initialGrid, width, height, terrainWeights, clusterStrength, random);
-    const regions = buildRegionsFromTerrainGrid(terrainGrid, width, height);
+    const traitGrid = addNaturalTraits(terrainGrid, width, height, seed);
+    const regions = buildRegionsFromTerrainGrid(terrainGrid, traitGrid, width, height);
 
     return {
       seed,
@@ -326,7 +542,7 @@
       terrainWeights,
       regions,
       selectedRegionId: null,
-      summary: summarizeTerrain(regions)
+      summary: summarizeMap(regions)
     };
   }
 

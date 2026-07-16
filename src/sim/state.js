@@ -11,8 +11,8 @@
 
     return {
       meta: {
-        version: '0.1.0-day-3',
-        buildLabel: 'Temporary Map Generation'
+        version: '0.1.0-day-4',
+        buildLabel: 'Natural Layer Generation'
       },
       modelSummary,
       clock: {
@@ -32,8 +32,8 @@
       log: [
         'Prototype shell initialized.',
         `Core data models loaded: ${modelSummary.terrainTypes} terrain types, ${modelSummary.resourceTypes} resources, ${modelSummary.naturalTraits} natural traits.`,
-        `Day 3 map generated: ${generatedMap.summary.totalRegions} regions from seed ${generatedMap.seed}.`,
-        `Cluster strength set to ${generatedMap.clusterStrength}: terrain groups prefer nearby compatible regions.`
+        `Day 4 map generated: ${generatedMap.summary.totalRegions} regions and ${generatedMap.summary.traitBearingRegions} trait-bearing regions.`,
+        'Natural layer added: coast, river, lake, oasis, fertility, forest density, and deposit traits.'
       ]
     };
   }

@@ -377,3 +377,53 @@ h2 {
     justify-content: flex-start;
   }
 }
+.region-traits {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px;
+  min-height: 14px;
+}
+
+.region-traits span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 13px;
+  padding: 0 3px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.62);
+  color: rgba(20, 23, 20, 0.76);
+  font-size: 0.56rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.trait-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  max-width: 170px;
+}
+
+.trait-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 7px;
+  border: 1px solid rgba(71, 108, 79, 0.26);
+  border-radius: 999px;
+  background: #f2f6ec;
+  color: var(--green-deep);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.muted-text {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.compact-traits div {
+  padding: 7px 0;
+}

@@ -10,8 +10,8 @@
 
   const prototypeMilestone = {
     name: 'Prototype 0.1',
-    day: 3,
-    focus: 'Temporary map generation',
+    day: 4,
+    focus: 'Natural layer generation',
     scope: [
       'Map generation',
       'Resources',
@@ -28,9 +28,9 @@
   };
 
   const mapDefaults = {
-    width: 12,
-    height: 8,
-    seed: 'eco-ruler-day-3',
+    width: 11,
+    height: 10,
+    seed: 'eco-ruler-day-4',
     clusterStrength: 60,
     terrainWeights: {
       mountains: 16,
