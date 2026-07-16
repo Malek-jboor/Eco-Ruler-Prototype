@@ -1,3 +1,4 @@
+# إعادة تشغيل النشر بعد تفعيل صفحات GitHub
 name: Deploy prototype to GitHub Pages
 
 on:
