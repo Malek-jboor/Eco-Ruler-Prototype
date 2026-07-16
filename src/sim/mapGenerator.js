@@ -379,13 +379,10 @@
     }
   }
 
-  function addFertilityTraits(traitGrid, terrainGrid, width, height, random) {
+  function addFertilityTraits(traitGrid, terrainGrid, width, height) {
     for (let y = 0; y < height; y += 1) {
       for (let x = 0; x < width; x += 1) {
-        const terrain = terrainAt(terrainGrid, x, y);
-        const waterBoost = hasTrait(traitGrid, x, y, 'river') || hasTrait(traitGrid, x, y, 'lake') || hasTrait(traitGrid, x, y, 'oasis') ? 0.35 : 0;
-        const baseChance = { plains: 0.22, forests: 0.2, swamps: 0.12, hills: 0.05, desert: 0.01, mountains: 0 }[terrain] || 0;
-        if (random() < baseChance + waterBoost) {
+        if (hasTrait(traitGrid, x, y, 'river') || hasTrait(traitGrid, x, y, 'lake')) {
           addTrait(traitGrid, x, y, 'high-fertility');
         }
       }
@@ -464,7 +461,7 @@
       hills: 0.1,
       plains: 0.05
     });
-    addFertilityTraits(traitGrid, terrainGrid, width, height, random);
+    addFertilityTraits(traitGrid, terrainGrid, width, height);
     addDepositTraits(traitGrid, terrainGrid, width, height, random);
 
     return traitGrid.map((row) => row.map((traitSet) => Array.from(traitSet)));
