@@ -1,4 +1,4 @@
-﻿(function initializeConstants(namespace) {
+(function initializeConstants(namespace) {
   const terrainTypes = [
     { id: 'mountains', label: 'Mountains', color: '#7a7f73', isWater: false },
     { id: 'hills', label: 'Hills', color: '#9a8f5d', isWater: false },
@@ -32,8 +32,8 @@
 
   const prototypeMilestone = {
     name: 'Prototype 0.1',
-    day: 6,
-    focus: 'Water provinces and world shapes',
+    day: 10,
+    focus: 'Natural traits and resource candidates',
     scope: [
       'Map generation',
       'Resources',
@@ -54,7 +54,7 @@
     worldShape: 'pangea',
     width: 16,
     height: 10,
-    seed: 'eco-ruler-day-6-water',
+    seed: 'eco-ruler-day-10-resource-candidates',
     worldProfile: 'temperate',
     clusterStrength: 60,
     terrainWeights: {

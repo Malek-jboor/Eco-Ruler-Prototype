@@ -1,4 +1,4 @@
-﻿(function initializeApp(namespace) {
+(function initializeApp(namespace) {
   const maxLogEntries = 8;
   const tooltipPinDelayMs = 5000;
   let tooltipElement = null;
@@ -7,6 +7,11 @@
   let tooltipTarget = null;
   let tooltipPinnedAt = 0;
   let globalTooltipDismissBound = false;
+  let mapDragState = null;
+  let provincePopoverDragState = null;
+  let suppressRegionClick = false;
+  const minMapZoom = 1;
+  const maxMapZoom = 16;
 
   function escapeHtml(value) {
     return String(value)
@@ -29,6 +34,10 @@
     return namespace.resources.naturalTraitById[traitId];
   }
 
+  function resourceById(resourceId) {
+    return namespace.resources.resourceById[resourceId];
+  }
+
   function worldProfileById(profileId) {
     return namespace.data.worldProfiles.find((profile) => profile.id === profileId) || namespace.data.worldProfiles[0];
   }
@@ -41,6 +50,327 @@
     return namespace.data.mapSizes.find((size) => size.id === sizeId) || namespace.data.mapSizes[0];
   }
 
+  function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+  }
+
+  function resetMapViewport(state) {
+    state.mapViewport = { x: 0, y: 0, zoom: 1 };
+    return state.mapViewport;
+  }
+
+  function normalizeMapViewport(state, viewport = state.mapViewport) {
+    const base = state.map.viewBox || { width: 1120, height: 760 };
+    const zoom = clamp(Number(viewport && viewport.zoom) || 1, minMapZoom, maxMapZoom);
+    const width = base.width / zoom;
+    const height = base.height / zoom;
+    return {
+      x: clamp(Number(viewport && viewport.x) || 0, 0, Math.max(0, base.width - width)),
+      y: clamp(Number(viewport && viewport.y) || 0, 0, Math.max(0, base.height - height)),
+      zoom
+    };
+  }
+
+  function visibleMapViewBox(state) {
+    const base = state.map.viewBox || { width: 1120, height: 760 };
+    const viewport = normalizeMapViewport(state);
+    state.mapViewport = viewport;
+    return {
+      x: viewport.x,
+      y: viewport.y,
+      width: base.width / viewport.zoom,
+      height: base.height / viewport.zoom,
+      zoom: viewport.zoom
+    };
+  }
+
+  function formatViewBox(viewBox) {
+    return `${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`;
+  }
+
+  function setMapViewport(state, viewport) {
+    state.mapViewport = normalizeMapViewport(state, viewport);
+    return visibleMapViewBox(state);
+  }
+
+  function svgPointFromEvent(svg, viewBox, event) {
+    const rect = svg.getBoundingClientRect();
+    const xRatio = rect.width ? (event.clientX - rect.left) / rect.width : 0.5;
+    const yRatio = rect.height ? (event.clientY - rect.top) / rect.height : 0.5;
+    return {
+      x: viewBox.x + clamp(xRatio, 0, 1) * viewBox.width,
+      y: viewBox.y + clamp(yRatio, 0, 1) * viewBox.height
+    };
+  }
+
+  function updateMapViewDom(root, state) {
+    const svg = root.querySelector('[data-region-map]');
+    const zoomLabel = root.querySelector('[data-map-zoom]');
+    const viewBox = visibleMapViewBox(state);
+    if (svg) {
+      svg.setAttribute('viewBox', formatViewBox(viewBox));
+    }
+    if (zoomLabel) {
+      zoomLabel.textContent = `Zoom ${Math.round(viewBox.zoom * 100)}%`;
+    }
+  }
+
+  function zoomMapAtEvent(root, state, event) {
+    const svg = root.querySelector('[data-region-map]');
+    if (!svg) {
+      return;
+    }
+    event.preventDefault();
+    const before = visibleMapViewBox(state);
+    const point = svgPointFromEvent(svg, before, event);
+    const factor = event.deltaY < 0 ? 1.18 : 1 / 1.18;
+    const nextZoom = clamp(before.zoom * factor, minMapZoom, maxMapZoom);
+    const base = state.map.viewBox;
+    const nextWidth = base.width / nextZoom;
+    const nextHeight = base.height / nextZoom;
+    const xAnchor = before.width ? (point.x - before.x) / before.width : 0.5;
+    const yAnchor = before.height ? (point.y - before.y) / before.height : 0.5;
+    setMapViewport(state, {
+      x: point.x - xAnchor * nextWidth,
+      y: point.y - yAnchor * nextHeight,
+      zoom: nextZoom
+    });
+    updateMapViewDom(root, state);
+  }
+
+  function startMapDrag(root, state, event) {
+    if (event.button !== 0 || event.target.closest('button, input, select, textarea')) {
+      return;
+    }
+    const svg = root.querySelector('[data-region-map]');
+    if (!svg) {
+      return;
+    }
+    mapDragState = {
+      pointerId: event.pointerId,
+      shell: event.currentTarget,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      startViewBox: visibleMapViewBox(state),
+      moved: false
+    };
+  }
+  function moveMapDrag(root, state, event) {
+    if (!mapDragState || mapDragState.pointerId !== event.pointerId) {
+      return;
+    }
+    const svg = root.querySelector('[data-region-map]');
+    if (!svg) {
+      return;
+    }
+    const rect = svg.getBoundingClientRect();
+    const dx = event.clientX - mapDragState.startClientX;
+    const dy = event.clientY - mapDragState.startClientY;
+    if (!mapDragState.moved && Math.abs(dx) + Math.abs(dy) > 5) {
+      mapDragState.moved = true;
+      mapDragState.shell.setPointerCapture(event.pointerId);
+      mapDragState.shell.classList.add('dragging');
+    }
+    if (!mapDragState.moved) {
+      return;
+    }
+    event.preventDefault();
+    const view = mapDragState.startViewBox;
+    const nextX = view.x - (rect.width ? dx / rect.width : 0) * view.width;
+    const nextY = view.y - (rect.height ? dy / rect.height : 0) * view.height;
+    setMapViewport(state, { x: nextX, y: nextY, zoom: view.zoom });
+    updateMapViewDom(root, state);
+  }
+  function finishMapDrag(event) {
+    if (!mapDragState || mapDragState.pointerId !== event.pointerId) {
+      return;
+    }
+    if (mapDragState.moved) {
+      suppressRegionClick = true;
+      window.setTimeout(() => {
+        suppressRegionClick = false;
+      }, 120);
+    }
+    mapDragState.shell.classList.remove('dragging');
+    mapDragState = null;
+  }
+  function closeSelectedProvince(root, state) {
+    state.map.selectedRegionId = null;
+    delete ensureUiState(state).provincePopoverPosition;
+    hideTooltip(true);
+    render(root, state);
+  }
+
+  function closeProvinceBeforeMapSelection(root, state, event) {
+    if (!state.map.selectedRegionId || suppressRegionClick) {
+      return;
+    }
+    if (event.target.closest && event.target.closest('[data-province-popover]')) {
+      return;
+    }
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    closeSelectedProvince(root, state);
+  }
+  function bindMapViewControls(root, state) {
+    const shell = root.querySelector('[data-map-shell]');
+    if (shell) {
+      shell.addEventListener('wheel', (event) => zoomMapAtEvent(root, state, event), { passive: false });
+      shell.addEventListener('click', (event) => closeProvinceBeforeMapSelection(root, state, event), true);
+      shell.addEventListener('pointerdown', (event) => startMapDrag(root, state, event));
+      shell.addEventListener('pointermove', (event) => moveMapDrag(root, state, event));
+      shell.addEventListener('pointerup', finishMapDrag);
+      shell.addEventListener('pointercancel', finishMapDrag);
+      shell.addEventListener('click', (event) => {
+        if (suppressRegionClick || event.target.closest('[data-region-id]')) {
+          return;
+        }
+        if (state.map.selectedRegionId) {
+          closeSelectedProvince(root, state);
+        }
+      });
+    }
+
+    root.querySelectorAll('[data-action="reset-map-view"]').forEach((button) => {
+      button.addEventListener('click', () => {
+        resetMapViewport(state);
+        addLog(state, 'Map view reset to 100% zoom.');
+        render(root, state);
+      });
+    });
+  }
+  function ensureUiState(state) {
+    state.ui = state.ui || {};
+    return state.ui;
+  }
+
+  function clampProvincePopoverPosition(root, panel, left, top) {
+    const stage = root.querySelector('.map-stage');
+    if (!stage || !panel) {
+      return { left, top };
+    }
+    const margin = 12;
+    const maxLeft = Math.max(margin, stage.clientWidth - panel.offsetWidth - margin);
+    const maxTop = Math.max(margin, stage.clientHeight - panel.offsetHeight - margin);
+    return {
+      left: clamp(left, margin, maxLeft),
+      top: clamp(top, margin, maxTop)
+    };
+  }
+
+  function setProvincePopoverAnchor(root, state, event, sourceElement) {
+    const stage = root.querySelector('.map-stage');
+    if (!stage) {
+      return;
+    }
+
+    const stageRect = stage.getBoundingClientRect();
+    let clientX = event && Number.isFinite(event.clientX) ? event.clientX : null;
+    let clientY = event && Number.isFinite(event.clientY) ? event.clientY : null;
+
+    if ((clientX === null || clientY === null) && sourceElement && typeof sourceElement.getBoundingClientRect === 'function') {
+      const sourceRect = sourceElement.getBoundingClientRect();
+      clientX = sourceRect.left + sourceRect.width / 2;
+      clientY = sourceRect.top + sourceRect.height / 2;
+    }
+
+    if (clientX === null || clientY === null) {
+      return;
+    }
+
+    const ui = ensureUiState(state);
+    ui.provincePopoverPosition = {
+      mode: 'anchor',
+      x: clamp(clientX - stageRect.left, 12, Math.max(12, stageRect.width - 12)),
+      y: clamp(clientY - stageRect.top, 12, Math.max(12, stageRect.height - 12))
+    };
+  }
+
+  function positionProvincePopover(root, state) {
+    const panel = root.querySelector('[data-province-popover]');
+    if (!panel) {
+      return;
+    }
+
+    const ui = ensureUiState(state);
+    const position = ui.provincePopoverPosition;
+    if (!position) {
+      return;
+    }
+
+    let left = position.x;
+    let top = position.y;
+    if (position.mode !== 'manual') {
+      left = position.x - panel.offsetWidth / 2;
+      top = position.y - panel.offsetHeight - 12;
+    }
+
+    const clamped = clampProvincePopoverPosition(root, panel, left, top);
+    panel.style.left = `${clamped.left}px`;
+    panel.style.top = `${clamped.top}px`;
+    panel.style.right = 'auto';
+    panel.style.bottom = 'auto';
+  }
+
+  function startProvincePopoverDrag(root, state, event) {
+    if (event.button !== 0 || event.target.closest('button')) {
+      return;
+    }
+    const panel = event.currentTarget.closest('[data-province-popover]');
+    const stage = root.querySelector('.map-stage');
+    if (!panel || !stage) {
+      return;
+    }
+
+    const panelRect = panel.getBoundingClientRect();
+    provincePopoverDragState = {
+      pointerId: event.pointerId,
+      panel,
+      offsetX: event.clientX - panelRect.left,
+      offsetY: event.clientY - panelRect.top
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    panel.classList.add('dragging');
+    hideTooltip(true);
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  function moveProvincePopoverDrag(root, state, event) {
+    if (!provincePopoverDragState || provincePopoverDragState.pointerId !== event.pointerId) {
+      return;
+    }
+    const stage = root.querySelector('.map-stage');
+    const panel = provincePopoverDragState.panel;
+    if (!stage || !panel) {
+      return;
+    }
+
+    const stageRect = stage.getBoundingClientRect();
+    const desiredLeft = event.clientX - stageRect.left - provincePopoverDragState.offsetX;
+    const desiredTop = event.clientY - stageRect.top - provincePopoverDragState.offsetY;
+    const clamped = clampProvincePopoverPosition(root, panel, desiredLeft, desiredTop);
+    panel.style.left = `${clamped.left}px`;
+    panel.style.top = `${clamped.top}px`;
+    panel.style.right = 'auto';
+    panel.style.bottom = 'auto';
+    ensureUiState(state).provincePopoverPosition = {
+      mode: 'manual',
+      x: clamped.left,
+      y: clamped.top
+    };
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  function finishProvincePopoverDrag(event) {
+    if (!provincePopoverDragState || provincePopoverDragState.pointerId !== event.pointerId) {
+      return;
+    }
+    provincePopoverDragState.panel.classList.remove('dragging');
+    provincePopoverDragState = null;
+    event.stopPropagation();
+  }
   function selectedRegion(state) {
     return state.map.regions.find((region) => region.id === state.map.selectedRegionId) || null;
   }
@@ -81,6 +411,32 @@
       .join('');
   }
 
+  function resourceCatalog(categories, resources) {
+    return categories
+      .map((category) => {
+        const categoryResources = resources.filter((resource) => resource.category === category.id);
+        return `
+          <details class='resource-category' open>
+            <summary><span>${escapeHtml(category.label)}</span><strong>${categoryResources.length}</strong></summary>
+            <ul class='resource-list'>
+              ${categoryResources.map((resource) => {
+                const outputs = resource.outputs && resource.outputs.length
+                  ? `<em>Outputs: ${resource.outputs.map((output) => escapeHtml(output)).join(', ')}</em>`
+                  : '';
+                return `
+                  <li class='resource-item'>
+                    <strong>${escapeHtml(resource.label)}</strong>
+                    <span>${escapeHtml(resource.role)}</span>
+                    ${outputs}
+                  </li>
+                `;
+              }).join('')}
+            </ul>
+          </details>
+        `;
+      })
+      .join('');
+  }
   function optionsFor(items, selectedId) {
     return items
       .map((item) => `<option value='${item.id}' ${selectedId === item.id ? 'selected' : ''}>${escapeHtml(item.label)}</option>`)
@@ -109,6 +465,20 @@
       .join('');
   }
 
+  function traitSummaryTooltipBody(state) {
+    return namespace.resources.naturalTraits
+      .map((trait) => `${trait.label}: ${state.map.summary.traitCounts[trait.id] || 0}`)
+      .join(' | ');
+  }
+
+  function modelSummaryTooltipBody(state) {
+    return [
+      `Terrain Types: ${state.modelSummary.terrainTypes}`,
+      `Resources: ${state.modelSummary.resourceTypes}`,
+      `Natural Traits: ${state.modelSummary.naturalTraits}`,
+      `Factories: ${state.modelSummary.factories.length}`
+    ].join(' | ');
+  }
   function traitPills(traits) {
     if (!traits.length) {
       return `<span class='muted-text'>None</span>`;
@@ -136,6 +506,95 @@
     }).join('')}</ul>`;
   }
 
+  function formatEfficiency(value) {
+    const percent = Math.round((Number(value) || 0) * 100);
+    return `${percent}%`;
+  }
+
+  function traitLabelList(traitIds) {
+    if (!traitIds.length) return 'None';
+    return traitIds.map((traitId) => {
+      const trait = traitById(traitId);
+      return trait ? trait.label : traitId;
+    }).join(', ');
+  }
+
+  function resourceToken(resource) {
+    const words = resource.label.split(' ');
+    const token = words.length > 1
+      ? words.map((word) => word.charAt(0)).join('').slice(0, 3)
+      : resource.label.slice(0, 3);
+    return token.toUpperCase();
+  }
+
+  function candidateDetail(candidate) {
+    const resource = resourceById(candidate.resourceId) || { label: candidate.resourceId, category: 'unknown' };
+    const category = namespace.resources.resourceCategories.find((item) => item.id === resource.category);
+    const active = candidate.activeEffects.length
+      ? ` | Buffs: ${candidate.activeEffects.map((effect) => {
+        const trait = traitById(effect.traitId);
+        return `${trait ? trait.label : effect.traitId} +${formatEfficiency(effect.value)}`;
+      }).join(', ')}`
+      : '';
+    return `Category: ${category ? category.label : 'Unknown'} | Final Efficiency: ${formatEfficiency(candidate.finalEfficiency)} | Base: ${formatEfficiency(candidate.baseEfficiency)} | Trait Buff: ${formatEfficiency(candidate.traitBonus)}${active}`;
+  }
+
+  function eligibleResourceCandidates(region) {
+    return (region.resourceCandidates || []).filter((candidate) => candidate.available);
+  }
+
+  function resourceCandidateSummary(region) {
+    const available = eligibleResourceCandidates(region).length;
+    return `${available} eligible`;
+  }
+
+  function resourceCandidateList(region) {
+    if (region.isWater) {
+      return `<p class='muted-text small-copy'>Water province. No land resources.</p>`;
+    }
+    const available = eligibleResourceCandidates(region);
+    if (!available.length) {
+      return `<p class='muted-text small-copy'>No eligible resources.</p>`;
+    }
+
+    return `
+      <ul class='resource-candidate-list'>
+        ${available.map((candidate) => {
+          const resource = resourceById(candidate.resourceId) || { label: candidate.resourceId, category: 'unknown' };
+          return `
+            <li class='resource-candidate available' ${tooltipAttributes(resource.label, candidateDetail(candidate))}>
+              <span class='resource-candidate-main'>
+                <strong>${escapeHtml(resource.label)}</strong>
+              </span>
+            </li>
+          `;
+        }).join('')}
+      </ul>
+    `;
+  }
+
+  function compactResourceCandidateList(region) {
+    if (region.isWater) {
+      return `<p class='muted-text small-copy'>Water province. No land resources.</p>`;
+    }
+    const available = eligibleResourceCandidates(region);
+    if (!available.length) {
+      return `<p class='muted-text small-copy'>No eligible resources.</p>`;
+    }
+
+    return `
+      <ul class='province-resource-list'>
+        ${available.map((candidate) => {
+          const resource = resourceById(candidate.resourceId) || { label: candidate.resourceId, category: 'unknown' };
+          return `
+            <li class='province-resource-row available' ${tooltipAttributes(resource.label, candidateDetail(candidate))}>
+              <strong>${escapeHtml(resource.label)}</strong>
+            </li>
+          `;
+        }).join('')}
+      </ul>
+    `;
+  }
   function productionSlotSummary(region) {
     const openSlots = region.productionSlots.filter((slot) => slot.status === 'open').length;
     const lockedSlots = region.productionSlots.length - openSlots;
@@ -145,7 +604,7 @@
   function productionSlotRows(region) {
     return `<ol class='slot-list'>${region.productionSlots.map((slot) => `
       <li class='slot-row ${slot.status}'>
-        <span>Slot ${slot.index}</span>
+        <span>Work Slot ${slot.index}</span>
         <strong>${slot.status}</strong>
       </li>
     `).join('')}</ol>`;
@@ -166,11 +625,11 @@
   function regionRuleNotes(region) {
     const notes = [];
     if (region.isWater) {
-      notes.push('Water province. It blocks rivers, settlement, and production slots in this prototype.');
+      notes.push('Water province. It blocks rivers, settlement, and work slots in this prototype.');
       return notes;
     }
     if (region.terrainId === 'desert') {
-      notes.push('Desert blocks River and Lake. Water appears through Oasis or Coast only.');
+      notes.push('Desert can carry River in the prototype resource rules, but it never receives High Fertility. Lake is still blocked for Desert.');
     }
     if (region.terrainId === 'mountains') {
       notes.push('Mountains block High Fertility even when water is nearby.');
@@ -181,8 +640,8 @@
     if (region.traits.includes('river') || region.traits.includes('lake')) {
       notes.push('River or Lake can create High Fertility unless terrain blocks it.');
     }
-    if (region.traits.includes('rich-deposit')) {
-      notes.push('Rich Deposit means one existing deposit trait has higher strategic value.');
+    if (region.traits.includes('god-bless')) {
+      notes.push('God Bless adds +100% to primary resource production only. It does not improve settlement value or supply value.');
     }
     return notes.length ? notes : ['No special rule notes yet.'];
   }
@@ -191,6 +650,75 @@
     return `<ul class='rule-note-list'>${regionRuleNotes(region).map((note) => `<li>${escapeHtml(note)}</li>`).join('')}</ul>`;
   }
 
+  function provinceSlotDots(region) {
+    return `<span class='province-slot-dots'>${region.productionSlots.map((slot) => `
+      <span class='province-slot-dot ${slot.status}' ${tooltipAttributes(`Work Slot ${slot.index}`, `Work slot is ${slot.status}.`)}></span>
+    `).join('')}</span>`;
+  }
+
+  function selectedRegionPopover(state) {
+    const region = selectedRegion(state);
+    if (!region) {
+      return '';
+    }
+
+    const terrain = terrainById(region.terrainId);
+    const layerText = region.isWater ? 'Water' : region.notes.replace(' climate band', '');
+    const notes = regionRuleNotes(region);
+    return `
+      <aside class='province-popover' aria-label='Selected province details' data-province-popover>
+        <div class='province-popover-header' data-province-drag-handle>
+          <div>
+            <p class='eyebrow'>Province</p>
+            <h2>${escapeHtml(region.name)}</h2>
+          </div>
+          <button type='button' class='province-popover-close' data-action='close-province' aria-label='Close province details'>X</button>
+        </div>
+
+        <div class='province-chip-row'>
+          <span ${tooltipAttributes('Terrain', terrain.role || terrain.label)}>${escapeHtml(terrain.label)}</span>
+          <span ${tooltipAttributes('Map Layer', layerText)}>${escapeHtml(layerText)}</span>
+          <span ${tooltipAttributes('Resources', resourceCandidateSummary(region))}>${resourceCandidateSummary(region)}</span>
+          <span ${tooltipAttributes('Work Slots', productionSlotSummary(region))}>${productionSlotSummary(region)}</span>
+        </div>
+
+        <section class='province-section'>
+          <div class='province-section-title'>
+            <h3>Natural Traits</h3>
+            <span>${region.traits.length}</span>
+          </div>
+          <div class='province-traits'>${traitPills(region.traits)}</div>
+        </section>
+
+        <section class='province-section'>
+          <div class='province-section-title'>
+            <h3>Eligible Resources</h3>
+            <span>${eligibleResourceCandidates(region).length}</span>
+          </div>
+          ${compactResourceCandidateList(region)}
+        </section>
+
+        <section class='province-section province-quick-facts'>
+          <div>
+            <dt>Work Slots</dt>
+            <dd>${provinceSlotDots(region)}</dd>
+          </div>
+          <div>
+            <dt>Neighbors</dt>
+            <dd ${tooltipAttributes('Neighbor Regions', `${region.neighbors.length} adjacent provinces.`)}>${region.neighbors.length}</dd>
+          </div>
+          <div>
+            <dt>Position</dt>
+            <dd ${tooltipAttributes('Map Position', `${Math.round(region.center.x)}, ${Math.round(region.center.y)}`)}>${Math.round(region.center.x)}, ${Math.round(region.center.y)}</dd>
+          </div>
+          <div>
+            <dt>Rules</dt>
+            <dd ${tooltipAttributes('Rule Notes', notes.join(' '))}>${notes.length}</dd>
+          </div>
+        </section>
+      </aside>
+    `;
+  }
   function mapQualityWarnings(state) {
     const landTotal = state.map.summary.landRegions || 1;
     const waterTotal = state.map.summary.waterRegions || 0;
@@ -272,7 +800,7 @@
         <div><dt>Selected Region</dt><dd>None</dd></div>
         <div><dt>Terrain</dt><dd>Pending</dd></div>
         <div><dt>Natural Traits</dt><dd>Pending</dd></div>
-        <div><dt>Production Slots</dt><dd>0 / 3</dd></div>
+        <div><dt>Work Slots</dt><dd>0 / 3</dd></div>
       `;
     }
 
@@ -284,10 +812,12 @@
       <div><dt>Terrain</dt><dd>${escapeHtml(terrain.label)}</dd></div>
       <div><dt>Map Layer</dt><dd>${escapeHtml(layerText)}</dd></div>
       <div><dt>Natural Traits</dt><dd><span class='trait-list'>${traitPills(region.traits)}</span></dd></div>
-      <div><dt>Production Slots</dt><dd>${productionSlotSummary(region)}</dd></div>
+      <div><dt>Work Slots</dt><dd>${productionSlotSummary(region)}</dd></div>
+      <div><dt>Resources</dt><dd>${resourceCandidateSummary(region)}</dd></div>
       <div><dt>Neighbors</dt><dd>${region.neighbors.length}</dd></div>
       <div class='detail-wide'><dt>Trait Detail</dt><dd>${traitDetailList(region.traits)}</dd></div>
-      <div class='detail-wide'><dt>Slot Detail</dt><dd>${productionSlotRows(region)}</dd></div>
+      <div class='detail-wide'><dt>Resource Candidates</dt><dd>${resourceCandidateList(region)}</dd></div>
+      <div class='detail-wide'><dt>Work Slot Detail</dt><dd>${productionSlotRows(region)}</dd></div>
       <div class='detail-wide'><dt>Neighbor Regions</dt><dd>${neighborPills(state, region)}</dd></div>
       <div class='detail-wide'><dt>Rule Notes</dt><dd>${ruleNoteList(region)}</dd></div>
     `;
@@ -331,18 +861,21 @@
       worldProfile,
       clusterStrength
     });
+    resetMapViewport(state);
     const profile = worldProfileById(worldProfile);
     const shape = worldShapeById(worldShape);
     addLog(state, `Generated ${state.map.summary.totalRegions} regions: ${state.map.summary.landRegions} land, ${state.map.summary.waterRegions} water, ${shape.label}, ${profile.label}.`);
     render(root, state);
   }
 
-  function selectRegion(root, state, regionId) {
+  function selectRegion(root, state, regionId, event = null, sourceElement = null) {
     state.map.selectedRegionId = regionId;
+    setProvincePopoverAnchor(root, state, event, sourceElement);
     const region = selectedRegion(state);
     if (region) {
       const terrain = terrainById(region.terrainId);
-      addLog(state, `Selected ${region.name}: ${terrain.label}, ${region.traits.length} natural traits, ${region.neighbors.length} neighbors.`);
+      const availableResources = (region.resourceCandidates || []).filter((candidate) => candidate.available).length;
+      addLog(state, `Selected ${region.name}: ${terrain.label}, ${region.traits.length} natural traits, ${availableResources} resources, ${region.neighbors.length} neighbors.`);
     }
     render(root, state);
   }
@@ -391,7 +924,8 @@
     tooltipTarget = target;
     tooltipPinned = false;
     tooltipPinnedAt = 0;
-    element.innerHTML = `<strong>${title}</strong><span>${body}</span>`;
+    element.style.setProperty('--tooltip-pin-ms', `${tooltipPinDelayMs}ms`);
+    element.innerHTML = `<div class='tooltip-head'><strong>${title}</strong><svg class='tooltip-pin-progress' viewBox='0 0 18 18' aria-hidden='true'><circle class='track' cx='9' cy='9' r='7'></circle><circle class='fill' cx='9' cy='9' r='7'></circle></svg></div><span>${body}</span>`;
     element.classList.add('visible');
     element.classList.remove('pinned');
     element.dataset.tooltipState = 'open';
@@ -484,12 +1018,25 @@
       button.addEventListener('click', () => generateMap(root, state, { randomSeed: true }));
     });
 
+    root.querySelectorAll('[data-action="close-province"]').forEach((button) => {
+      button.addEventListener('click', (event) => {
+        event.stopPropagation();
+        closeSelectedProvince(root, state);
+      });
+    });
     root.querySelectorAll('[data-region-id]').forEach((regionElement) => {
-      regionElement.addEventListener('click', () => selectRegion(root, state, regionElement.dataset.regionId));
+      regionElement.addEventListener('click', (event) => {
+        if (suppressRegionClick) {
+          event.preventDefault();
+          return;
+        }
+        event.stopPropagation();
+        selectRegion(root, state, regionElement.dataset.regionId, event, regionElement);
+      });
       regionElement.addEventListener('keydown', (event) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
-          selectRegion(root, state, regionElement.dataset.regionId);
+          selectRegion(root, state, regionElement.dataset.regionId, null, regionElement);
         }
       });
     });
@@ -503,6 +1050,18 @@
       });
     });
 
+    root.querySelectorAll('[data-province-drag-handle]').forEach((handle) => {
+      handle.addEventListener('pointerdown', (event) => startProvincePopoverDrag(root, state, event));
+      handle.addEventListener('pointermove', (event) => moveProvincePopoverDrag(root, state, event));
+      handle.addEventListener('pointerup', finishProvincePopoverDrag);
+      handle.addEventListener('pointercancel', finishProvincePopoverDrag);
+    });
+
+    root.querySelectorAll('[data-province-popover]').forEach((panel) => {
+      panel.addEventListener('click', (event) => event.stopPropagation());
+      panel.addEventListener('pointerdown', (event) => event.stopPropagation());
+    });
+    bindMapViewControls(root, state);
     bindTooltips(root);
   }
 
@@ -511,6 +1070,7 @@
     const profile = worldProfileById(state.map.worldProfile);
     const shape = worldShapeById(state.map.worldShape);
     const size = mapSizeById(state.map.mapSize);
+    const mapView = visibleMapViewBox(state);
     root.innerHTML = `
       <header class='topbar'>
         <div>
@@ -575,6 +1135,11 @@
             <h2>Resource Groups</h2>
             <dl class='stat-list compact-list'>${categoryRows(resources.resourceCategories, resources.resourceTypes)}</dl>
           </section>
+          <section class='panel-block resource-catalog-panel'>
+            <h2>Resource Catalog</h2>
+            <div class='resource-catalog'>${resourceCatalog(resources.resourceCategories, resources.resourceTypes)}</div>
+            <p class='profile-note'>Meat, Milk, Leather, Wool, and Fur are animal outputs. Bronze is manufactured later from Copper and Tin.</p>
+          </section>
         </aside>
 
         <section class='map-stage' aria-label='World map stage'>
@@ -589,26 +1154,25 @@
               <span>${profile.label}</span>
               <span>${state.map.summary.landRegions} land</span>
               <span>${state.map.summary.waterRegions} water</span>
+              <span data-map-zoom>Zoom ${Math.round(mapView.zoom * 100)}%</span>
             </div>
             <div class='toolbar-actions'>
               <button type='button' data-action='generate-map'>Generate</button>
+              <button type='button' data-action='reset-map-view'>Reset View</button>
               <button type='button' disabled>Found City</button>
             </div>
           </div>
-          <div class='region-map-shell'>
-            <svg class='region-map' viewBox='0 0 ${state.map.viewBox.width} ${state.map.viewBox.height}' aria-label='Generated region map'>
+          <div class='region-map-shell' data-map-shell>
+            <svg class='region-map' data-region-map viewBox='${formatViewBox(mapView)}' aria-label='Generated region map'>
               <polygon class='map-boundary' points='${polygonPoints(state.map.boundary)}'></polygon>
               ${regionPolygons(state)}
               ${riverLines(state)}
             </svg>
           </div>
+          ${selectedRegionPopover(state)}
         </section>
 
         <aside class='inspector-panel'>
-          <section class='panel-block'>
-            <h2>Region Inspector</h2>
-            <dl class='stat-list'>${selectedRegionRows(state)}</dl>
-          </section>
           <section class='panel-block'>
             <h2>Map Summary</h2>
             <dl class='stat-list'>
@@ -626,18 +1190,12 @@
             <h2>Map Warnings</h2>
             ${warningList(state)}
           </section>
-          <section class='panel-block'>
-            <h2>Natural Traits</h2>
-            <dl class='stat-list compact-traits'>${traitSummaryRows(state)}</dl>
-          </section>
-          <section class='panel-block'>
-            <h2>Model Summary</h2>
-            <dl class='stat-list'>
-              <div><dt>Terrain Types</dt><dd>${state.modelSummary.terrainTypes}</dd></div>
-              <div><dt>Resources</dt><dd>${state.modelSummary.resourceTypes}</dd></div>
-              <div><dt>Natural Traits</dt><dd>${state.modelSummary.naturalTraits}</dd></div>
-              <div><dt>Factories</dt><dd>${state.modelSummary.factories.length}</dd></div>
-            </dl>
+          <section class='panel-block summary-icons-panel'>
+            <h2>Quick Info</h2>
+            <div class='summary-icon-row'>
+              <button type='button' class='summary-icon-button' ${tooltipAttributes('Natural Traits', traitSummaryTooltipBody(state))} aria-label='Natural traits summary'>NT</button>
+              <button type='button' class='summary-icon-button' ${tooltipAttributes('Model Summary', modelSummaryTooltipBody(state))} aria-label='Model summary'>MS</button>
+            </div>
           </section>
           <section class='panel-block'>
             <h2>Event Log</h2>
@@ -648,6 +1206,7 @@
     `;
 
     bindEvents(root, state);
+    positionProvincePopover(root, state);
   }
 
   function mount(root) {

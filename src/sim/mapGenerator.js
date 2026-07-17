@@ -1,10 +1,10 @@
-﻿(function initializeMapGenerator(namespace) {
+(function initializeMapGenerator(namespace) {
   const mapViewBox = { width: 1120, height: 760 };
   const waterTerrainId = 'ocean';
 
   const profileSettings = {
     temperate: {
-      terrainWeights: { mountains: 13, hills: 15, plains: 35, forests: 25, desert: 6, swamps: 2 },
+      terrainWeights: { mountains: 18, hills: 10, plains: 36.5, forests: 10, desert: 14, swamps: 11.5 },
       riverEveryLandRegions: 72,
       minimumRivers: 2,
       riverLength: { min: 6, max: 12 },
@@ -12,23 +12,23 @@
       oasisChance: 0.08
     },
     arid: {
-      terrainWeights: { mountains: 12, hills: 18, plains: 17, forests: 6, desert: 46, swamps: 1 },
-      riverEveryLandRegions: 140,
+      terrainWeights: { mountains: 18, hills: 18, plains: 17, forests: 12, desert: 30.5, swamps: 4.5 },
+      riverEveryLandRegions: 96,
       minimumRivers: 1,
       riverLength: { min: 4, max: 8 },
-      lakeRatio: 0.006,
-      oasisChance: 0.2
+      lakeRatio: 0.008,
+      oasisChance: 0.16
     },
     humid: {
-      terrainWeights: { mountains: 7, hills: 10, plains: 32, forests: 29, desert: 0, swamps: 24 },
-      riverEveryLandRegions: 55,
+      terrainWeights: { mountains: 18, hills: 10, plains: 24, forests: 20, desert: 12, swamps: 16 },
+      riverEveryLandRegions: 58,
       minimumRivers: 3,
-      riverLength: { min: 9, max: 16 },
-      lakeRatio: 0.032,
-      oasisChance: 0.04
+      riverLength: { min: 7, max: 13 },
+      lakeRatio: 0.028,
+      oasisChance: 0.03
     },
     cold: {
-      terrainWeights: { mountains: 38, hills: 24, plains: 15, forests: 17, desert: 2, swamps: 1 },
+      terrainWeights: { mountains: 32, hills: 20, plains: 15.5, forests: 15.5, desert: 12, swamps: 5 },
       riverEveryLandRegions: 82,
       minimumRivers: 2,
       riverLength: { min: 6, max: 11 },
@@ -73,7 +73,7 @@
     'precious-vein': 'Prc',
     'gem-vein': 'Gem',
     volcanic: 'Vol',
-    'rich-deposit': 'Rich'
+    'god-bless': 'God'
   };
 
   const shapeSizeScale = { small: 1, medium: 1.25, large: 1.45 };
@@ -117,7 +117,8 @@
     if (!Number.isFinite(numericValue)) {
       return 0;
     }
-    return Math.max(0, Math.min(100, Math.round(numericValue)));
+    const clampedValue = Math.max(0, Math.min(100, numericValue));
+    return Math.round(clampedValue * 100) / 100;
   }
 
   function normalizeTerrainWeights(weights = {}) {
@@ -942,6 +943,63 @@
     });
   }
 
+  function minimumTerrainCountFor(terrainAssignments) {
+    const landCount = terrainAssignments.filter(isLandTerrain).length;
+    return Math.min(3, Math.floor(landCount / Math.max(1, landTerrainIds().length)));
+  }
+
+  function terrainAssignmentCounts(terrainAssignments) {
+    const counts = {};
+    landTerrainIds().forEach((terrainId) => { counts[terrainId] = 0; });
+    terrainAssignments.forEach((terrainId) => {
+      if (counts[terrainId] !== undefined) {
+        counts[terrainId] += 1;
+      }
+    });
+    return counts;
+  }
+
+  function enforceMinimumTerrainCounts(layouts, terrainAssignments, terrainWeights, random) {
+    const minimumCount = minimumTerrainCountFor(terrainAssignments);
+    if (minimumCount <= 0) return terrainAssignments;
+
+    const assignments = [...terrainAssignments];
+    const terrainIds = landTerrainIds();
+    const layoutsById = Object.fromEntries(layouts.map((layout) => [layout.id, layout]));
+    const landIndexes = layouts
+      .filter((layout) => isLandTerrain(assignments[layout.index]))
+      .map((layout) => layout.index);
+    const counts = terrainAssignmentCounts(assignments);
+    let safety = terrainIds.length * minimumCount * 3;
+
+    while (safety > 0) {
+      safety -= 1;
+      const terrainId = terrainIds.find((id) => (counts[id] || 0) < minimumCount);
+      if (!terrainId) break;
+
+      let donorIndexes = landIndexes.filter((index) => assignments[index] !== terrainId && (counts[assignments[index]] || 0) > minimumCount);
+      if (!donorIndexes.length) {
+        donorIndexes = landIndexes.filter((index) => assignments[index] !== terrainId);
+      }
+      if (!donorIndexes.length) break;
+
+      const candidates = donorIndexes.map((index) => {
+        const layout = layouts[index];
+        const donorPressure = Math.max(0, (counts[assignments[index]] || 0) - minimumCount) * 4;
+        return {
+          value: index,
+          weight: scoreTerrainChoice(terrainId, layout, layoutsById, assignments, terrainWeights, 0.68) + donorPressure + random() * 0.45
+        };
+      });
+      const selectedIndex = weightedPick(candidates, random);
+      const previousTerrain = assignments[selectedIndex];
+      assignments[selectedIndex] = terrainId;
+      counts[previousTerrain] = Math.max(0, (counts[previousTerrain] || 0) - 1);
+      counts[terrainId] = (counts[terrainId] || 0) + 1;
+    }
+
+    return assignments;
+  }
   function createTraitSets(layouts) {
     return layouts.map(() => new Set());
   }
@@ -954,6 +1012,108 @@
     return traitSets[index].has(traitId);
   }
 
+  function countTrait(traitSets, traitId) {
+    return traitSets.reduce((count, traitSet) => count + (traitSet.has(traitId) ? 1 : 0), 0);
+  }
+
+  function minimumTraitCountForMapSize(mapSize) {
+    return { small: 1, medium: 2, large: 3 }[mapSize] || 1;
+  }
+
+  function layoutTouchesWater(layout, layoutsById, terrainAssignments) {
+    return layout.neighbors.some((neighborId) => {
+      const neighbor = layoutsById[neighborId];
+      return neighbor && isWaterTerrain(terrainAssignments[neighbor.index]);
+    });
+  }
+
+  function isTraitAllowedForLayout(traitId, layout, layoutsById, terrainAssignments, traitSets) {
+    if (!layout || hasTrait(traitSets, layout.index, traitId)) return false;
+    const terrain = terrainAssignments[layout.index];
+    if (!isLandTerrain(terrain)) return false;
+
+    switch (traitId) {
+      case 'river':
+        return isTerrainAllowedForRiver(terrain);
+      case 'lake':
+        return isTerrainAllowedForLake(terrain) && !hasTrait(traitSets, layout.index, 'coast');
+      case 'coast':
+        return layoutTouchesWater(layout, layoutsById, terrainAssignments);
+      case 'oasis':
+        return terrain === 'desert';
+      case 'high-fertility':
+        return (terrain === 'plains' || terrain === 'forests' || terrain === 'hills' || terrain === 'swamps')
+          && (hasTrait(traitSets, layout.index, 'river') || hasTrait(traitSets, layout.index, 'lake'));
+      case 'forest-density':
+        return terrain === 'forests' || terrain === 'swamps' || terrain === 'hills' || terrain === 'plains' || terrain === 'mountains';
+      case 'mineral-vein':
+      case 'precious-vein':
+        return terrain === 'mountains' || terrain === 'hills';
+      case 'gem-vein':
+        return terrain === 'mountains';
+      case 'volcanic':
+        return terrain === 'mountains';
+      case 'god-bless':
+        return true;
+      default:
+        return true;
+    }
+  }
+
+  function traitPlacementWeight(traitId, layout, layoutsById, terrainAssignments, traitSets, random) {
+    const terrain = terrainAssignments[layout.index];
+    const nearRiver = layout.neighbors.some((neighborId) => {
+      const neighbor = layoutsById[neighborId];
+      return neighbor && hasTrait(traitSets, neighbor.index, 'river');
+    });
+
+    const baseWeights = {
+      river: terrainPreferenceForRiver(terrain),
+      lake: ({ plains: 2.1, forests: 1.8, swamps: 1.9, hills: 1, mountains: 0.25 }[terrain] || 0.6) + (nearRiver ? 1.4 : 0),
+      coast: layoutTouchesWater(layout, layoutsById, terrainAssignments) ? 2 : 0,
+      oasis: terrain === 'desert' ? 2 + (hasTrait(traitSets, layout.index, 'coast') ? 0 : 0.8) : 0,
+      'high-fertility': ({ plains: 2.2, forests: 1.7, swamps: 1.5, hills: 0.9 }[terrain] || 0.5),
+      'forest-density': ({ forests: 3, swamps: 1.6, hills: 1.1, plains: 0.8, mountains: 0.55 }[terrain] || 0),
+      'mineral-vein': ({ mountains: 6, hills: 0.55 }[terrain] || 0),
+      'precious-vein': ({ mountains: 6.4, hills: 0.38 }[terrain] || 0),
+      'gem-vein': ({ mountains: 5.8 }[terrain] || 0),
+      volcanic: ({ mountains: 2.4 }[terrain] || 0),
+      'god-bless': godBlessWeight(layout, traitSets, terrainAssignments, random)
+    };
+
+    const neighborBonus = layout.neighbors.reduce((bonus, neighborId) => {
+      const neighbor = layoutsById[neighborId];
+      return bonus + (neighbor && hasTrait(traitSets, neighbor.index, traitId) ? 0.2 : 0);
+    }, 0);
+
+    return (baseWeights[traitId] || 1) + neighborBonus + random() * 0.35;
+  }
+
+  function ensureMinimumTraitCount(layouts, traitSets, terrainAssignments, mapSize, random, traitId) {
+    const minimumCount = minimumTraitCountForMapSize(mapSize);
+    const layoutsById = Object.fromEntries(layouts.map((layout) => [layout.id, layout]));
+
+    while (countTrait(traitSets, traitId) < minimumCount) {
+      const candidates = layouts
+        .filter((layout) => isTraitAllowedForLayout(traitId, layout, layoutsById, terrainAssignments, traitSets))
+        .map((layout) => ({
+          value: layout.index,
+          weight: traitPlacementWeight(traitId, layout, layoutsById, terrainAssignments, traitSets, random)
+        }))
+        .filter((candidate) => candidate.weight > 0);
+
+      if (!candidates.length) break;
+      addTrait(traitSets, weightedPick(candidates, random), traitId);
+    }
+  }
+
+  function ensureMinimumNaturalTraitCounts(layouts, traitSets, terrainAssignments, mapSize, random) {
+    const pathManagedTraits = new Set(['river']);
+    namespace.resources.naturalTraits
+      .map((trait) => trait.id)
+      .filter((traitId) => !pathManagedTraits.has(traitId))
+      .forEach((traitId) => ensureMinimumTraitCount(layouts, traitSets, terrainAssignments, mapSize, random, traitId));
+  }
   function addCoastTraits(layouts, traitSets, terrainAssignments) {
     const layoutsById = Object.fromEntries(layouts.map((layout) => [layout.id, layout]));
     layouts.forEach((layout) => {
@@ -968,16 +1128,128 @@
     });
   }
 
-  function isTerrainAllowedForRiverLake(terrainId) {
+  function isTerrainAllowedForRiver(terrainId) {
+    return isLandTerrain(terrainId);
+  }
+
+  function isTerrainAllowedForLake(terrainId) {
     return isLandTerrain(terrainId) && terrainId !== 'desert';
   }
 
   function terrainPreferenceForRiver(terrainId) {
-    return { mountains: 0.45, hills: 1.05, plains: 1.7, forests: 1.45, swamps: 1.35 }[terrainId] || 0;
+    return { mountains: 0.45, hills: 1.05, plains: 1.7, forests: 1.45, desert: 0.42, swamps: 1.35 }[terrainId] || 0;
   }
 
   function terrainRoughnessForRiver(terrainId) {
-    return { mountains: 3, hills: 2, plains: 1, forests: 1, swamps: 1 }[terrainId] || 1;
+    return { mountains: 3, hills: 2, plains: 1, forests: 1, desert: 2, swamps: 1 }[terrainId] || 1;
+  }
+
+  function terrainHeightForRiver(terrainId) {
+    return { mountains: 4, hills: 3, desert: 2, plains: 1, forests: 1, swamps: 0 }[terrainId] ?? 1;
+  }
+
+  function riverSourceBaseWeight(terrainId) {
+    return { mountains: 2.4, hills: 1.8, forests: 1.15, swamps: 1.05, plains: 0.95 }[terrainId] || 0;
+  }
+
+  function sourceWeightForRiver(layout, layoutsById, terrainAssignments) {
+    const terrain = terrainAssignments[layout.index];
+    const baseWeight = riverSourceBaseWeight(terrain);
+    if (baseWeight <= 0) return 0;
+
+    const currentHeight = terrainHeightForRiver(terrain);
+    let flowNeighbors = 0;
+    let downhillNeighbors = 0;
+    let oceanNeighbors = 0;
+
+    layout.neighbors.forEach((neighborId) => {
+      const neighbor = layoutsById[neighborId];
+      if (!neighbor) return;
+      const neighborTerrain = terrainAssignments[neighbor.index];
+      if (isWaterTerrain(neighborTerrain)) {
+        oceanNeighbors += 1;
+        return;
+      }
+      if (!isTerrainAllowedForRiver(neighborTerrain)) return;
+      const neighborHeight = terrainHeightForRiver(neighborTerrain);
+      if (neighborHeight <= currentHeight) {
+        flowNeighbors += 1;
+      }
+      if (neighborHeight < currentHeight) {
+        downhillNeighbors += 1;
+      }
+    });
+
+    if (flowNeighbors === 0) return 0;
+    return baseWeight + flowNeighbors * 0.32 + downhillNeighbors * 0.44 - oceanNeighbors * 0.18;
+  }
+
+  function riverSourceSpacingFor(mapSize, worldShape) {
+    const sizeDistance = { small: 260, medium: 320, large: 380 }[mapSize] || 260;
+    const shapeScale = { pangea: 1, continental: 0.92, islands: 0.78 }[worldShape] || 1;
+    return sizeDistance * shapeScale;
+  }
+
+  function wrappedAxisDistance(first, second, span) {
+    const direct = Math.abs(first - second);
+    return Math.min(direct, Math.max(0, span - direct));
+  }
+
+  function wrappedDistanceBetween(a, b) {
+    const dx = wrappedAxisDistance(a.center.x, b.center.x, mapViewBox.width);
+    const dy = wrappedAxisDistance(a.center.y, b.center.y, mapViewBox.height);
+    return Math.sqrt((dx * dx) + (dy * dy));
+  }
+
+  function wrappedDistanceFromPoint(layout, point) {
+    const dx = wrappedAxisDistance(layout.center.x, point.x, mapViewBox.width);
+    const dy = wrappedAxisDistance(layout.center.y, point.y, mapViewBox.height);
+    return Math.sqrt((dx * dx) + (dy * dy));
+  }
+
+  function riverSourceAnchorsFor(count, random) {
+    const total = Math.max(1, count);
+    const offsetX = random();
+    const offsetY = random();
+    return Array.from({ length: total }, (_, index) => {
+      const xRatio = (index + offsetX) / total;
+      const yRatio = 0.18 + (((index * 0.61803398875) + offsetY) % 1) * 0.64;
+      return {
+        x: (xRatio % 1) * mapViewBox.width,
+        y: yRatio * mapViewBox.height
+      };
+    });
+  }
+
+  function pickRiverSourceForAnchor(availableSources, layouts, sourceLayouts, anchor, minimumSourceDistance, random) {
+    const scoredSources = availableSources.map((candidate) => {
+      const layout = layouts[candidate.value];
+      const anchorDistance = wrappedDistanceFromPoint(layout, anchor);
+      const nearestSourceDistance = sourceLayouts.length
+        ? Math.min(...sourceLayouts.map((sourceLayout) => wrappedDistanceBetween(layout, sourceLayout)))
+        : minimumSourceDistance;
+      const spreadScore = Math.min(2.4, nearestSourceDistance / Math.max(1, minimumSourceDistance)) * 95;
+      const sourceQuality = candidate.weight * 70;
+      const anchorPenalty = anchorDistance * 0.9;
+      return {
+        value: candidate.value,
+        distance: nearestSourceDistance,
+        weight: sourceQuality + spreadScore - anchorPenalty + random() * 18
+      };
+    });
+
+    const spacedSources = scoredSources.filter((candidate) => candidate.distance >= minimumSourceDistance * 0.72);
+    const pool = spacedSources.length ? spacedSources : scoredSources;
+    return pool.reduce((best, candidate) => (candidate.weight > best.weight ? candidate : best), pool[0]).value;
+  }
+
+  function riverProximityPenalty(layout, layoutsById, traitSets) {
+    const directPenalty = hasTrait(traitSets, layout.index, 'river') ? -3 : 0;
+    const neighborPenalty = layout.neighbors.reduce((penalty, neighborId) => {
+      const neighbor = layoutsById[neighborId];
+      return penalty + (neighbor && hasTrait(traitSets, neighbor.index, 'river') ? -0.75 : 0);
+    }, 0);
+    return directPenalty + neighborPenalty;
   }
 
   function distanceBetween(a, b) {
@@ -998,27 +1270,6 @@
     return Math.max(3, Math.min(Math.round(baseLength * sizeScale * shapeScale), Math.max(3, Math.floor(landCount * 0.22))));
   }
 
-  function sourceWeightForRiver(layout, layoutsById, terrainAssignments) {
-    const terrain = terrainAssignments[layout.index];
-    if (terrain !== 'mountains' && terrain !== 'hills') return 0;
-
-    let friendlyNeighbors = 0;
-    let blockedNeighbors = 0;
-    layout.neighbors.forEach((neighborId) => {
-      const neighbor = layoutsById[neighborId];
-      const neighborTerrain = terrainAssignments[neighbor.index];
-      if (neighborTerrain === 'plains' || neighborTerrain === 'forests' || neighborTerrain === 'swamps' || neighborTerrain === 'hills') {
-        friendlyNeighbors += 1;
-      }
-      if (neighborTerrain === 'desert' || neighborTerrain === waterTerrainId) {
-        blockedNeighbors += 1;
-      }
-    });
-
-    if (friendlyNeighbors === 0) return 0;
-    return (terrain === 'mountains' ? 2.4 : 1.6) + friendlyNeighbors * 0.75 - blockedNeighbors * 0.28;
-  }
-
   function buildRiverPath(source, layouts, layoutsById, terrainAssignments, traitSets, targetLength, random) {
     const path = [];
     const visited = new Set();
@@ -1033,25 +1284,29 @@
       if (path.length >= 4 && terrainAssignments[current.index] === 'swamps' && random() < 0.35) break;
 
       const currentTerrain = terrainAssignments[current.index];
+      const currentHeight = terrainHeightForRiver(currentTerrain);
       const currentRoughness = terrainRoughnessForRiver(currentTerrain);
       const candidates = current.neighbors
         .map((neighborId) => layoutsById[neighborId])
         .filter((neighbor) => {
           if (!neighbor || visited.has(neighbor.index)) return false;
           const neighborTerrain = terrainAssignments[neighbor.index];
-          return isTerrainAllowedForRiverLake(neighborTerrain);
+          if (!isTerrainAllowedForRiver(neighborTerrain)) return false;
+          return terrainHeightForRiver(neighborTerrain) <= currentHeight;
         })
         .map((neighbor) => {
           const neighborTerrain = terrainAssignments[neighbor.index];
+          const nextHeight = terrainHeightForRiver(neighborTerrain);
           const nextRoughness = terrainRoughnessForRiver(neighborTerrain);
-          const downhill = Math.max(0, currentRoughness - nextRoughness) * 0.75;
-          const flatFlow = currentRoughness === nextRoughness ? 0.45 : 0;
+          const downhill = Math.max(0, currentHeight - nextHeight) * 0.68;
+          const flatFlow = currentHeight === nextHeight ? 0.42 : 0;
+          const roughnessDrag = Math.max(0, nextRoughness - currentRoughness) * -0.15;
           const coastEnd = path.length >= 3 && hasTrait(traitSets, neighbor.index, 'coast') ? 2.2 : 0;
           const awayFromSource = Math.min(1.4, distanceBetween(source, neighbor) / 240);
-          const existingRiverPenalty = hasTrait(traitSets, neighbor.index, 'river') ? -3 : 0;
+          const existingRiverPenalty = riverProximityPenalty(neighbor, layoutsById, traitSets);
           return {
             value: neighbor.index,
-            weight: terrainPreferenceForRiver(neighborTerrain) + downhill + flatFlow + coastEnd + awayFromSource + existingRiverPenalty + random() * 0.4
+            weight: terrainPreferenceForRiver(neighborTerrain) + downhill + flatFlow + roughnessDrag + coastEnd + awayFromSource + existingRiverPenalty + random() * 0.4
           };
         })
         .filter((candidate) => candidate.weight > 0);
@@ -1068,7 +1323,8 @@
     const profile = profileFor(profileId);
     const layoutsById = Object.fromEntries(layouts.map((layout) => [layout.id, layout]));
     const landCount = terrainAssignments.filter(isLandTerrain).length;
-    const desiredCount = riverCountFor(profile, landCount);
+    const minimumRiverRegions = minimumTraitCountForMapSize(mapSize);
+    const desiredCount = Math.max(riverCountFor(profile, landCount), minimumRiverRegions);
     const sourceCandidates = layouts
       .map((layout) => ({ value: layout.index, weight: sourceWeightForRiver(layout, layoutsById, terrainAssignments) }))
       .filter((candidate) => candidate.weight > 0);
@@ -1077,17 +1333,24 @@
 
     const riverPaths = [];
     const usedSources = new Set();
+    const sourceLayouts = [];
+    const minimumSourceDistance = riverSourceSpacingFor(mapSize, worldShape);
+    const sourceAnchors = riverSourceAnchorsFor(desiredCount, random);
     let created = 0;
     let attempts = 0;
-    while (created < desiredCount && attempts < desiredCount * 8) {
+    const maxAttempts = Math.max(24, desiredCount * 12);
+
+    while ((created < desiredCount || countTrait(traitSets, 'river') < minimumRiverRegions) && attempts < maxAttempts) {
+      const anchor = sourceAnchors[attempts % sourceAnchors.length];
       attempts += 1;
       const availableSources = sourceCandidates.filter((candidate) => !usedSources.has(candidate.value));
       if (!availableSources.length) break;
-      const sourceIndex = weightedPick(availableSources, random);
+      const sourceIndex = pickRiverSourceForAnchor(availableSources, layouts, sourceLayouts, anchor, minimumSourceDistance, random);
       usedSources.add(sourceIndex);
       const targetLength = riverLengthFor(profile, mapSize, worldShape, random, landCount);
       const path = buildRiverPath(layouts[sourceIndex], layouts, layoutsById, terrainAssignments, traitSets, targetLength, random);
       if (!path.length) continue;
+      sourceLayouts.push(layouts[sourceIndex]);
       path.forEach((index) => addTrait(traitSets, index, 'river'));
       riverPaths.push(path);
       created += 1;
@@ -1103,7 +1366,7 @@
 
     const layoutsById = Object.fromEntries(layouts.map((layout) => [layout.id, layout]));
     const candidates = layouts
-      .filter((layout) => isTerrainAllowedForRiverLake(terrainAssignments[layout.index]) && !hasTrait(traitSets, layout.index, 'coast'))
+      .filter((layout) => isTerrainAllowedForLake(terrainAssignments[layout.index]) && !hasTrait(traitSets, layout.index, 'coast'))
       .map((layout) => {
         const nearRiver = layout.neighbors.some((neighborId) => {
           const neighbor = layoutsById[neighborId];
@@ -1138,7 +1401,7 @@
     const profile = profileFor(profileId);
     layouts.forEach((layout) => {
       const terrain = terrainAssignments[layout.index];
-      if (terrain === 'desert' && !hasTrait(traitSets, layout.index, 'coast') && random() < profile.oasisChance) {
+      if (terrain === 'desert' && random() < profile.oasisChance) {
         addTrait(traitSets, layout.index, 'oasis');
       }
     });
@@ -1155,18 +1418,37 @@
   }
 
   function addDepositTraits(layouts, traitSets, terrainAssignments, random) {
-    addRandomTraitByTerrain(layouts, traitSets, terrainAssignments, random, 'mineral-vein', { mountains: 0.34, hills: 0.22, desert: 0.08, plains: 0, forests: 0, swamps: 0, ocean: 0 });
-    addRandomTraitByTerrain(layouts, traitSets, terrainAssignments, random, 'precious-vein', { mountains: 0.11, hills: 0.07, desert: 0.035, plains: 0, forests: 0, swamps: 0, ocean: 0 });
-    addRandomTraitByTerrain(layouts, traitSets, terrainAssignments, random, 'gem-vein', { mountains: 0.045, hills: 0.025, desert: 0.04, plains: 0, forests: 0, swamps: 0, ocean: 0 });
+    addRandomTraitByTerrain(layouts, traitSets, terrainAssignments, random, 'mineral-vein', { mountains: 0.38, hills: 0.04, desert: 0, plains: 0, forests: 0, swamps: 0, ocean: 0 });
+    addRandomTraitByTerrain(layouts, traitSets, terrainAssignments, random, 'precious-vein', { mountains: 0.14, hills: 0.012, desert: 0, plains: 0, forests: 0, swamps: 0, ocean: 0 });
+    addRandomTraitByTerrain(layouts, traitSets, terrainAssignments, random, 'gem-vein', { mountains: 0.055, hills: 0, desert: 0, plains: 0, forests: 0, swamps: 0, ocean: 0 });
     addRandomTraitByTerrain(layouts, traitSets, terrainAssignments, random, 'volcanic', { mountains: 0.055, hills: 0, desert: 0, plains: 0, forests: 0, swamps: 0, ocean: 0 });
+  }
 
-    layouts.forEach((layout) => {
-      if (isWaterTerrain(terrainAssignments[layout.index])) return;
-      const hasDeposit = ['mineral-vein', 'precious-vein', 'gem-vein', 'volcanic'].some((traitId) => hasTrait(traitSets, layout.index, traitId));
-      if (hasDeposit && random() < 0.32) {
-        addTrait(traitSets, layout.index, 'rich-deposit');
-      }
-    });
+  function godBlessLimitForMapSize(mapSize) {
+    return minimumTraitCountForMapSize(mapSize);
+  }
+
+  function godBlessWeight(layout, traitSets, terrainAssignments, random) {
+    const terrain = terrainAssignments[layout.index];
+    const terrainWeight = { plains: 1.4, forests: 1.3, hills: 1.2, mountains: 1.1, swamps: 1.1, desert: 0.9 }[terrain] || 1;
+    const traitWeight = traitSets[layout.index].size * 0.16;
+    return terrainWeight + traitWeight + random() * 0.35;
+  }
+
+  function addGodBlessTraits(layouts, traitSets, terrainAssignments, random, mapSize) {
+    const limit = godBlessLimitForMapSize(mapSize);
+    const used = new Set();
+
+    for (let count = 0; count < limit; count += 1) {
+      const candidates = layouts
+        .filter((layout) => isLandTerrain(terrainAssignments[layout.index]) && !used.has(layout.index))
+        .map((layout) => ({ value: layout.index, weight: godBlessWeight(layout, traitSets, terrainAssignments, random) }));
+
+      if (!candidates.length) return;
+      const pick = weightedPick(candidates, random);
+      used.add(pick);
+      addTrait(traitSets, pick, 'god-bless');
+    }
   }
 
   function addNaturalTraits(layouts, terrainAssignments, seed, profileId, mapSize, worldShape) {
@@ -1180,6 +1462,10 @@
     addRandomTraitByTerrain(layouts, traitSets, terrainAssignments, random, 'forest-density', { mountains: 0.02, forests: 0.3, swamps: 0.18, hills: 0.1, plains: 0.05, desert: 0, ocean: 0 });
     addFertilityTraits(layouts, traitSets, terrainAssignments);
     addDepositTraits(layouts, traitSets, terrainAssignments, random);
+    addGodBlessTraits(layouts, traitSets, terrainAssignments, random, mapSize);
+    ensureMinimumNaturalTraitCounts(layouts, traitSets, terrainAssignments, mapSize, random);
+    addFertilityTraits(layouts, traitSets, terrainAssignments);
+    ensureMinimumTraitCount(layouts, traitSets, terrainAssignments, mapSize, random, 'high-fertility');
 
     return {
       traitSets: traitSets.map((traitSet) => Array.from(traitSet)),
@@ -1232,6 +1518,7 @@
         traits,
         neighbors: layout.neighbors,
         discovered: true,
+        resourceCandidates: isWater ? [] : namespace.resources.getResourceCandidates(terrainId, traits),
         productionSlots: isWater ? lockedWaterSlots() : null,
         notes: isWater ? 'water province' : `${band} climate band`
       });
@@ -1270,7 +1557,8 @@
     const landMask = assignLandMask(layout.layouts, width, height, seed, worldShape, mapSize);
     const random = createRandom(`${seed}:${worldProfile}:${worldShape}:${mapSize}:${clusterStrength}:terrain-layer`);
     const initialTerrainAssignments = createInitialTerrainAssignments(layout.layouts, landMask, terrainWeights, random);
-    const terrainAssignments = smoothTerrainAssignments(layout.layouts, initialTerrainAssignments, terrainWeights, clusterStrength, random);
+    const smoothedTerrainAssignments = smoothTerrainAssignments(layout.layouts, initialTerrainAssignments, terrainWeights, clusterStrength, random);
+    const terrainAssignments = enforceMinimumTerrainCounts(layout.layouts, smoothedTerrainAssignments, terrainWeights, random);
     const naturalLayer = addNaturalTraits(layout.layouts, terrainAssignments, seed, worldProfile, mapSize, worldShape);
     const regions = buildRegionsFromLayouts(layout.layouts, terrainAssignments, naturalLayer.traitSets);
 

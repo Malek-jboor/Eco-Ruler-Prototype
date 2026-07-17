@@ -1,4 +1,4 @@
-﻿(function initializeModels(namespace) {
+(function initializeModels(namespace) {
   const MAX_PRODUCTION_SLOTS = 3;
   let nextId = 1;
 
@@ -90,6 +90,7 @@
       controllerId = null,
       discovered = false,
       productionSlots = null,
+      resourceCandidates = [],
       notes = ""
     } = options;
 
@@ -107,6 +108,7 @@
       controllerId,
       discovered,
       productionSlots: productionSlots || createProductionSlots(),
+      resourceCandidates: [...resourceCandidates],
       notes
     };
   }

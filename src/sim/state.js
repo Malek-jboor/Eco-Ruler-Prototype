@@ -1,4 +1,4 @@
-﻿(function initializeState(namespace) {
+(function initializeState(namespace) {
   function createInitialState() {
     const modelSummary = namespace.models.createModelSummary();
     const generatedMap = namespace.mapGenerator.generateRegionMap({
@@ -11,8 +11,8 @@
 
     return {
       meta: {
-        version: '0.1.0-day-6-water',
-        buildLabel: 'Water Provinces And World Shapes'
+        version: '0.1.0-day-10-resource-candidates',
+        buildLabel: 'Natural Traits And Resource Candidates'
       },
       modelSummary,
       clock: {
@@ -22,6 +22,7 @@
         speed: 'Paused'
       },
       map: generatedMap,
+      mapViewport: { x: 0, y: 0, zoom: 1 },
       player: {
         civilization: 'Unselected',
         cities: [],
@@ -33,7 +34,11 @@
         'Prototype shell initialized.',
         `Core data models loaded: ${modelSummary.terrainTypes} terrain types, ${modelSummary.resourceTypes} resources, ${modelSummary.naturalTraits} natural traits.`,
         `Water map generated: ${generatedMap.summary.totalRegions} total regions, ${generatedMap.summary.landRegions} land, ${generatedMap.summary.waterRegions} water.`,
-        'Map tuning now uses size, world shape, climate, seed, and cluster strength.'
+        'Map tuning now uses size, world shape, climate, seed, and cluster strength.',
+        'Day 8 resources are approved and listed by category.',
+        'Day 9 natural traits now use God Bless instead of Rich Deposit.',
+        'Day 10 region resource candidates and additive efficiency are calculated from the approved spreadsheet.',
+        'Map view supports mouse-wheel zoom and drag panning.'
       ]
     };
   }
