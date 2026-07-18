@@ -11,8 +11,8 @@
 
     return {
       meta: {
-        version: '0.1.0-day-10-resource-candidates',
-        buildLabel: 'Natural Traits And Resource Candidates'
+        version: '0.1.0-day-13-rare-resources',
+        buildLabel: 'Rare Resource Logic'
       },
       modelSummary,
       clock: {
@@ -38,7 +38,9 @@
         'Day 8 resources are approved and listed by category.',
         'Day 9 natural traits now use God Bless instead of Rich Deposit.',
         'Day 10 region resource candidates and additive efficiency are calculated from the approved spreadsheet.',
-        'Map view supports mouse-wheel zoom and drag panning.'
+        'Map view supports mouse-wheel zoom and drag panning.',
+        'Day 12 Work Slot 1 can choose any eligible province resource through the Production tab Build action; later slots stay locked until city rules.',
+        'Day 13 rare resources now use stricter gates: gold and silver need Precious Vein, diamonds need Gem Vein, sulfur needs Volcanic Trait, and pearls need rare coastal Oyster Bed.'
       ]
     };
   }

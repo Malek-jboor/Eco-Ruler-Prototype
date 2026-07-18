@@ -222,7 +222,7 @@
       shell.addEventListener('pointerup', finishMapDrag);
       shell.addEventListener('pointercancel', finishMapDrag);
       shell.addEventListener('click', (event) => {
-        if (suppressRegionClick || event.target.closest('[data-region-id]')) {
+        if (suppressRegionClick || event.target.closest('.region-cell[data-region-id]')) {
           return;
         }
         if (state.map.selectedRegionId) {
@@ -300,16 +300,42 @@
 
     let left = position.x;
     let top = position.y;
-    if (position.mode !== 'manual') {
+    let clamped;
+    if (position.mode === 'manual') {
+      const stage = root.querySelector('.map-stage');
+      const margin = 12;
+      const maxLeft = stage ? Math.max(margin, stage.clientWidth - panel.offsetWidth - margin) : left;
+      const maxTop = stage ? Math.max(margin, stage.clientHeight - margin) : top;
+      clamped = {
+        left: clamp(left, margin, maxLeft),
+        top: clamp(top, margin, maxTop)
+      };
+    } else {
       left = position.x - panel.offsetWidth / 2;
       top = position.y - panel.offsetHeight - 12;
+      clamped = clampProvincePopoverPosition(root, panel, left, top);
     }
 
-    const clamped = clampProvincePopoverPosition(root, panel, left, top);
     panel.style.left = `${clamped.left}px`;
     panel.style.top = `${clamped.top}px`;
     panel.style.right = 'auto';
     panel.style.bottom = 'auto';
+  }
+
+  function lockProvincePopoverPosition(root, state) {
+    const panel = root.querySelector('[data-province-popover]');
+    const stage = root.querySelector('.map-stage');
+    if (!panel || !stage || typeof panel.getBoundingClientRect !== 'function' || typeof stage.getBoundingClientRect !== 'function') {
+      return;
+    }
+
+    const panelRect = panel.getBoundingClientRect();
+    const stageRect = stage.getBoundingClientRect();
+    ensureUiState(state).provincePopoverPosition = {
+      mode: 'manual',
+      x: panelRect.left - stageRect.left,
+      y: panelRect.top - stageRect.top
+    };
   }
 
   function startProvincePopoverDrag(root, state, event) {
@@ -548,6 +574,9 @@
     return `${available} eligible`;
   }
 
+  function candidateByResourceId(region, resourceId) {
+    return eligibleResourceCandidates(region).find((candidate) => candidate.resourceId === resourceId) || null;
+  }
   function resourceCandidateList(region) {
     if (region.isWater) {
       return `<p class='muted-text small-copy'>Water province. No land resources.</p>`;
@@ -598,18 +627,92 @@
   function productionSlotSummary(region) {
     const openSlots = region.productionSlots.filter((slot) => slot.status === 'open').length;
     const lockedSlots = region.productionSlots.length - openSlots;
-    return `${openSlots} open, ${lockedSlots} locked`;
+    const assignedSlots = region.productionSlots.filter((slot) => slot.resourceId).length;
+    return `${openSlots} open, ${lockedSlots} locked, ${assignedSlots} assigned`;
   }
 
-  function productionSlotRows(region) {
-    return `<ol class='slot-list'>${region.productionSlots.map((slot) => `
-      <li class='slot-row ${slot.status}'>
-        <span>Work Slot ${slot.index}</span>
-        <strong>${slot.status}</strong>
-      </li>
-    `).join('')}</ol>`;
+  function slotDetail(slot, region) {
+    if (region.isWater) {
+      return 'Ocean provinces do not use work slots in this prototype.';
+    }
+    if (slot.status !== 'open') {
+      return 'Locked until later city and regional development rules open more work slots.';
+    }
+    if (!slot.resourceId) {
+      return 'Open and unassigned. Use Build to choose one eligible resource for this work slot.';
+    }
+
+    const resource = resourceById(slot.resourceId);
+    const label = resource ? resource.label : slot.resourceId;
+    return `${label} assigned at ${formatEfficiency(slot.efficiency)} efficiency.`;
   }
 
+  function activeProvinceTab(state) {
+    const ui = ensureUiState(state);
+    if (ui.provincePopoverTab !== 'production') {
+      ui.provincePopoverTab = 'info';
+    }
+    return ui.provincePopoverTab;
+  }
+
+  function isSlotBuildMenuOpen(state, region, slot) {
+    const menu = ensureUiState(state).workSlotBuildMenu;
+    return Boolean(menu && menu.regionId === region.id && menu.slotIndex === slot.index);
+  }
+
+  function workSlotBuildOptions(region, slot) {
+    const available = eligibleResourceCandidates(region);
+    if (!available.length) {
+      return `<p class='muted-text small-copy'>No eligible resources.</p>`;
+    }
+
+    return `
+      <div class='work-slot-build-options'>
+        ${slot.resourceId ? `
+          <button type='button' class='build-option clear' data-action='assign-slot-resource' data-region-id='${escapeAttribute(region.id)}' data-slot-index='${slot.index}' data-resource-id=''>
+            <span>Clear Slot</span>
+            <strong>0%</strong>
+          </button>
+        ` : ''}
+        ${available.map((candidate) => {
+          const resource = resourceById(candidate.resourceId) || { label: candidate.resourceId };
+          const selected = slot.resourceId === candidate.resourceId;
+          return `
+            <button type='button' class='build-option ${selected ? 'selected' : ''}' data-action='assign-slot-resource' data-region-id='${escapeAttribute(region.id)}' data-slot-index='${slot.index}' data-resource-id='${escapeAttribute(candidate.resourceId)}' ${tooltipAttributes(resource.label, candidateDetail(candidate))}>
+              <span>${escapeHtml(resource.label)}</span>
+              <strong>${formatEfficiency(candidate.finalEfficiency)}</strong>
+            </button>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  function productionSlotRows(region, state = null) {
+    return `<ol class='slot-list production-slot-list'>${region.productionSlots.map((slot) => {
+      const resource = slot.resourceId ? resourceById(slot.resourceId) : null;
+      const label = resource ? resource.label : 'Empty';
+      const menuOpen = state ? isSlotBuildMenuOpen(state, region, slot) : false;
+      return `
+        <li class='slot-row work-slot-card ${slot.status} ${slot.resourceId ? 'assigned' : ''}'>
+          <div class='work-slot-head'>
+            <span ${tooltipAttributes(`Work Slot ${slot.index}`, slotDetail(slot, region))}>Work Slot ${slot.index}</span>
+            <strong>${slot.status}</strong>
+          </div>
+          <div class='work-slot-body'>
+            <b>${escapeHtml(label)}</b>
+            <em>${slot.resourceId ? formatEfficiency(slot.efficiency) : 'No resource'}</em>
+          </div>
+          ${slot.status === 'open' && !region.isWater ? `
+            <button type='button' class='work-slot-build-button ${menuOpen ? 'active' : ''}' data-action='toggle-slot-build' data-region-id='${escapeAttribute(region.id)}' data-slot-index='${slot.index}'>Build</button>
+            ${menuOpen ? workSlotBuildOptions(region, slot) : ''}
+          ` : `
+            <p class='work-slot-lock-note'>Locked by settlement level.</p>
+          `}
+        </li>
+      `;
+    }).join('')}</ol>`;
+  }
   function neighborPills(state, region) {
     return `<span class='neighbor-list'>${region.neighbors.map((neighborId) => {
       const neighbor = regionById(state, neighborId);
@@ -652,8 +755,90 @@
 
   function provinceSlotDots(region) {
     return `<span class='province-slot-dots'>${region.productionSlots.map((slot) => `
-      <span class='province-slot-dot ${slot.status}' ${tooltipAttributes(`Work Slot ${slot.index}`, `Work slot is ${slot.status}.`)}></span>
+      <span class='province-slot-dot ${slot.status} ${slot.resourceId ? 'assigned' : ''}' ${tooltipAttributes(`Work Slot ${slot.index}`, slotDetail(slot, region))}></span>
     `).join('')}</span>`;
+  }
+
+  function provinceResourceInfoList(region) {
+    if (region.isWater) {
+      return `<p class='muted-text small-copy'>Water province. No land resources.</p>`;
+    }
+
+    const available = eligibleResourceCandidates(region);
+    if (!available.length) {
+      return `<p class='muted-text small-copy'>No eligible resources.</p>`;
+    }
+
+    return `
+      <ul class='province-resource-list info-resource-list'>
+        ${available.map((candidate) => {
+          const resource = resourceById(candidate.resourceId) || { label: candidate.resourceId, category: 'unknown' };
+          return `
+            <li class='province-resource-row available' ${tooltipAttributes(resource.label, candidateDetail(candidate))}>
+              <strong>${escapeHtml(resource.label)}</strong>
+              <b>${formatEfficiency(candidate.finalEfficiency)}</b>
+            </li>
+          `;
+        }).join('')}
+      </ul>
+    `;
+  }
+
+  function provinceInfoPanel(region, terrain, layerText, notes) {
+    return `
+      <div class='province-info-grid'>
+        <section class='province-section province-info-card'>
+          <div class='province-section-title'>
+            <h3>Geography</h3>
+            <span>${escapeHtml(terrain.label)}</span>
+          </div>
+          <dl class='province-fact-list'>
+            <div><dt>Province</dt><dd>${escapeHtml(region.name)}</dd></div>
+            <div><dt>Terrain</dt><dd>${escapeHtml(terrain.label)}</dd></div>
+            <div><dt>Map Layer</dt><dd>${escapeHtml(layerText)}</dd></div>
+            <div><dt>Position</dt><dd>${Math.round(region.center.x)}, ${Math.round(region.center.y)}</dd></div>
+            <div><dt>Neighbors</dt><dd>${region.neighbors.length}</dd></div>
+            <div><dt>Population</dt><dd>Unsettled</dd></div>
+          </dl>
+        </section>
+
+        <section class='province-section province-info-card'>
+          <div class='province-section-title'>
+            <h3>Natural Traits</h3>
+            <span>${region.traits.length}</span>
+          </div>
+          <div class='province-traits'>${traitPills(region.traits)}</div>
+        </section>
+
+        <section class='province-section province-info-card resource-card'>
+          <div class='province-section-title'>
+            <h3>Eligible Resources</h3>
+            <span>${eligibleResourceCandidates(region).length}</span>
+          </div>
+          ${provinceResourceInfoList(region)}
+        </section>
+
+        <section class='province-section province-info-card'>
+          <div class='province-section-title'>
+            <h3>Rules</h3>
+            <span>${notes.length}</span>
+          </div>
+          ${ruleNoteList(region)}
+        </section>
+      </div>
+    `;
+  }
+
+  function provinceProductionPanel(region, state) {
+    return `
+      <section class='province-section province-production-panel'>
+        <div class='province-section-title'>
+          <h3>Production</h3>
+          <span>${productionSlotSummary(region)}</span>
+        </div>
+        ${productionSlotRows(region, state)}
+      </section>
+    `;
   }
 
   function selectedRegionPopover(state) {
@@ -665,60 +850,38 @@
     const terrain = terrainById(region.terrainId);
     const layerText = region.isWater ? 'Water' : region.notes.replace(' climate band', '');
     const notes = regionRuleNotes(region);
+    const activeTab = activeProvinceTab(state);
     return `
-      <aside class='province-popover' aria-label='Selected province details' data-province-popover>
-        <div class='province-popover-header' data-province-drag-handle>
-          <div>
-            <p class='eyebrow'>Province</p>
-            <h2>${escapeHtml(region.name)}</h2>
+      <aside class='province-popover province-popover-tabbed' aria-label='Selected province details' data-province-popover data-active-tab='${activeTab}'>
+        <nav class='province-popover-tabs' aria-label='Province detail tabs'>
+          <button type='button' class='province-tab-button ${activeTab === 'info' ? 'active' : ''}' data-action='set-province-tab' data-tab='info'>Info</button>
+          <button type='button' class='province-tab-button ${activeTab === 'production' ? 'active' : ''}' data-action='set-province-tab' data-tab='production'>Production</button>
+        </nav>
+
+        <div class='province-popover-main'>
+          <div class='province-popover-header' data-province-drag-handle>
+            <div>
+              <p class='eyebrow'>Province</p>
+              <h2>${escapeHtml(region.name)}</h2>
+            </div>
+            <button type='button' class='province-popover-close' data-action='close-province' aria-label='Close province details'>X</button>
           </div>
-          <button type='button' class='province-popover-close' data-action='close-province' aria-label='Close province details'>X</button>
+
+          <div class='province-chip-row'>
+            <span ${tooltipAttributes('Terrain', terrain.role || terrain.label)}>${escapeHtml(terrain.label)}</span>
+            <span ${tooltipAttributes('Map Layer', layerText)}>${escapeHtml(layerText)}</span>
+            <span ${tooltipAttributes('Resources', resourceCandidateSummary(region))}>${resourceCandidateSummary(region)}</span>
+            <span ${tooltipAttributes('Work Slots', productionSlotSummary(region))}>${productionSlotSummary(region)}</span>
+          </div>
+
+          <div class='province-tab-panel'>
+            ${activeTab === 'production' ? provinceProductionPanel(region, state) : provinceInfoPanel(region, terrain, layerText, notes)}
+          </div>
         </div>
-
-        <div class='province-chip-row'>
-          <span ${tooltipAttributes('Terrain', terrain.role || terrain.label)}>${escapeHtml(terrain.label)}</span>
-          <span ${tooltipAttributes('Map Layer', layerText)}>${escapeHtml(layerText)}</span>
-          <span ${tooltipAttributes('Resources', resourceCandidateSummary(region))}>${resourceCandidateSummary(region)}</span>
-          <span ${tooltipAttributes('Work Slots', productionSlotSummary(region))}>${productionSlotSummary(region)}</span>
-        </div>
-
-        <section class='province-section'>
-          <div class='province-section-title'>
-            <h3>Natural Traits</h3>
-            <span>${region.traits.length}</span>
-          </div>
-          <div class='province-traits'>${traitPills(region.traits)}</div>
-        </section>
-
-        <section class='province-section'>
-          <div class='province-section-title'>
-            <h3>Eligible Resources</h3>
-            <span>${eligibleResourceCandidates(region).length}</span>
-          </div>
-          ${compactResourceCandidateList(region)}
-        </section>
-
-        <section class='province-section province-quick-facts'>
-          <div>
-            <dt>Work Slots</dt>
-            <dd>${provinceSlotDots(region)}</dd>
-          </div>
-          <div>
-            <dt>Neighbors</dt>
-            <dd ${tooltipAttributes('Neighbor Regions', `${region.neighbors.length} adjacent provinces.`)}>${region.neighbors.length}</dd>
-          </div>
-          <div>
-            <dt>Position</dt>
-            <dd ${tooltipAttributes('Map Position', `${Math.round(region.center.x)}, ${Math.round(region.center.y)}`)}>${Math.round(region.center.x)}, ${Math.round(region.center.y)}</dd>
-          </div>
-          <div>
-            <dt>Rules</dt>
-            <dd ${tooltipAttributes('Rule Notes', notes.join(' '))}>${notes.length}</dd>
-          </div>
-        </section>
       </aside>
     `;
   }
+
   function mapQualityWarnings(state) {
     const landTotal = state.map.summary.landRegions || 1;
     const waterTotal = state.map.summary.waterRegions || 0;
@@ -870,6 +1033,9 @@
 
   function selectRegion(root, state, regionId, event = null, sourceElement = null) {
     state.map.selectedRegionId = regionId;
+    const ui = ensureUiState(state);
+    ui.provincePopoverTab = 'info';
+    delete ui.workSlotBuildMenu;
     setProvincePopoverAnchor(root, state, event, sourceElement);
     const region = selectedRegion(state);
     if (region) {
@@ -880,6 +1046,70 @@
     render(root, state);
   }
 
+  function setProvincePopoverTab(root, state, tab) {
+    lockProvincePopoverPosition(root, state);
+    const ui = ensureUiState(state);
+    ui.provincePopoverTab = tab === 'production' ? 'production' : 'info';
+    delete ui.workSlotBuildMenu;
+    hideTooltip(true);
+    render(root, state);
+  }
+
+  function toggleWorkSlotBuildMenu(root, state, regionId, slotIndex) {
+    lockProvincePopoverPosition(root, state);
+    const ui = ensureUiState(state);
+    const nextSlotIndex = Number(slotIndex);
+    ui.provincePopoverTab = 'production';
+    if (ui.workSlotBuildMenu && ui.workSlotBuildMenu.regionId === regionId && ui.workSlotBuildMenu.slotIndex === nextSlotIndex) {
+      delete ui.workSlotBuildMenu;
+    } else {
+      ui.workSlotBuildMenu = { regionId, slotIndex: nextSlotIndex };
+    }
+    hideTooltip(true);
+    render(root, state);
+  }
+
+  function assignWorkSlotResource(root, state, regionId, slotIndex, resourceId) {
+    lockProvincePopoverPosition(root, state);
+    const region = regionById(state, regionId);
+    if (!region || region.isWater) {
+      return;
+    }
+
+    const slot = region.productionSlots.find((item) => item.index === slotIndex);
+    if (!slot || slot.status !== 'open') {
+      return;
+    }
+
+    if (!resourceId) {
+      slot.resourceId = null;
+      slot.efficiency = 0;
+      slot.buildingId = null;
+      const ui = ensureUiState(state);
+      ui.provincePopoverTab = 'production';
+      delete ui.workSlotBuildMenu;
+      addLog(state, `${region.name} Work Slot ${slot.index} cleared.`);
+      render(root, state);
+      return;
+    }
+
+    const candidate = candidateByResourceId(region, resourceId);
+    if (!candidate) {
+      addLog(state, `${resourceId} is not eligible for ${region.name}.`);
+      render(root, state);
+      return;
+    }
+
+    const resource = resourceById(candidate.resourceId) || { label: candidate.resourceId };
+    slot.resourceId = candidate.resourceId;
+    slot.efficiency = candidate.finalEfficiency;
+    slot.buildingId = null;
+    const ui = ensureUiState(state);
+    ui.provincePopoverTab = 'production';
+    delete ui.workSlotBuildMenu;
+    addLog(state, `${region.name} Work Slot ${slot.index} assigned to ${resource.label} at ${formatEfficiency(candidate.finalEfficiency)} efficiency.`);
+    render(root, state);
+  }
   function ensureTooltipElement() {
     if (typeof document === 'undefined') {
       return null;
@@ -1018,13 +1248,33 @@
       button.addEventListener('click', () => generateMap(root, state, { randomSeed: true }));
     });
 
+    root.querySelectorAll('[data-action="set-province-tab"]').forEach((button) => {
+      button.addEventListener('click', (event) => {
+        event.stopPropagation();
+        setProvincePopoverTab(root, state, button.dataset.tab);
+      });
+    });
+
+    root.querySelectorAll('[data-action="toggle-slot-build"]').forEach((button) => {
+      button.addEventListener('click', (event) => {
+        event.stopPropagation();
+        toggleWorkSlotBuildMenu(root, state, button.dataset.regionId, Number(button.dataset.slotIndex));
+      });
+    });
+
+    root.querySelectorAll('[data-action="assign-slot-resource"]').forEach((button) => {
+      button.addEventListener('click', (event) => {
+        event.stopPropagation();
+        assignWorkSlotResource(root, state, button.dataset.regionId, Number(button.dataset.slotIndex), button.dataset.resourceId || '');
+      });
+    });
     root.querySelectorAll('[data-action="close-province"]').forEach((button) => {
       button.addEventListener('click', (event) => {
         event.stopPropagation();
         closeSelectedProvince(root, state);
       });
     });
-    root.querySelectorAll('[data-region-id]').forEach((regionElement) => {
+    root.querySelectorAll('.region-cell[data-region-id]').forEach((regionElement) => {
       regionElement.addEventListener('click', (event) => {
         if (suppressRegionClick) {
           event.preventDefault();

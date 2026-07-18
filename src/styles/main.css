@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   color-scheme: light;
   --ink: #232823;
   --muted: #697267;
@@ -335,7 +335,8 @@ h2 {
 
 .map-stage {
   display: grid;
-  grid-template-rows: auto minmax(540px, 1fr);
+  grid-template-rows: auto auto;
+  align-self: start;
   overflow: hidden;
 }
 
@@ -357,9 +358,7 @@ h2 {
 }
 
 .region-map-shell {
-  min-height: 540px;
   overflow: hidden;
-  padding: 16px;
   cursor: grab;
   user-select: none;
   touch-action: none;
@@ -370,9 +369,10 @@ h2 {
 .region-map {
   display: block;
   width: 100%;
-  height: 100%;
-  min-width: 820px;
-  min-height: 540px;
+  height: auto;
+  aspect-ratio: 1120 / 760;
+  min-width: 0;
+  min-height: 0;
 }
 
 .region-map-shell.dragging {
@@ -574,9 +574,10 @@ h2 {
 }
 
 .slot-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(74px, 0.85fr) minmax(0, 1.4fr) auto;
+  gap: 8px;
   align-items: center;
-  justify-content: space-between;
 }
 
 .slot-row strong {
@@ -587,6 +588,15 @@ h2 {
 .slot-row.locked strong {
   color: var(--muted);
 }
+.slot-row.assigned {
+  border-color: rgba(71, 108, 79, 0.28);
+  background: #f3f8ee;
+}
+
+.slot-row > span {
+  cursor: help;
+}
+
 
 .neighbor-list {
   display: flex;
@@ -1004,6 +1014,10 @@ h2 {
 .province-slot-dot.open {
   background: var(--green);
 }
+.province-slot-dot.assigned {
+  border-color: var(--green-deep);
+  background: var(--green-deep);
+}
 
 .tooltip-head {
   display: flex;
@@ -1205,4 +1219,304 @@ h2 {
 
 .province-popover-close {
   cursor: pointer;
+}
+/* Province tabbed inspector */
+.province-popover.province-popover-tabbed {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr);
+  gap: 0;
+  width: min(820px, calc(100% - 24px));
+  height: min(520px, calc(100% - 112px));
+  max-height: min(520px, calc(100% - 112px));
+  padding: 0;
+  overflow: hidden;
+  align-items: stretch;
+}
+
+.province-popover-tabs {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 12px 8px;
+  border-right: 1px solid var(--line);
+  background: #eef5e8;
+}
+
+.province-tab-button {
+  width: 100%;
+  min-height: 34px;
+  padding: 0 8px;
+  border: 1px solid rgba(71, 108, 79, 0.20);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-align: left;
+}
+
+.province-tab-button.active {
+  border-color: var(--green-deep);
+  background: #ffffff;
+  color: var(--green-deep);
+  box-shadow: inset 3px 0 0 var(--green-deep);
+}
+
+.province-popover-main {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.province-popover.province-popover-tabbed .province-popover-header {
+  padding: 12px 14px 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.province-popover.province-popover-tabbed .province-chip-row {
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.province-tab-panel {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px 14px 14px;
+  scrollbar-gutter: stable;
+}
+
+.province-info-grid {
+  display: grid;
+  grid-template-columns: minmax(190px, 0.9fr) minmax(220px, 1.1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.province-info-card {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(248, 250, 244, 0.88);
+}
+
+.province-info-card.resource-card {
+  grid-row: span 2;
+}
+
+.province-fact-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.province-fact-list div {
+  display: grid;
+  grid-template-columns: minmax(74px, 0.8fr) minmax(0, 1.2fr);
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(71, 108, 79, 0.12);
+}
+
+.province-fact-list div:last-child {
+  border-bottom: 0;
+}
+
+.province-fact-list dt {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.province-fact-list dd {
+  margin: 0;
+  min-width: 0;
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-align: right;
+}
+
+.info-resource-list {
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+}
+
+.info-resource-list .province-resource-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-height: 34px;
+}
+
+.info-resource-list .province-resource-row b {
+  white-space: nowrap;
+}
+
+.province-production-panel {
+  padding: 0;
+  border: 0;
+}
+
+.production-slot-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.slot-row.work-slot-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr;
+  align-content: start;
+  gap: 10px;
+  min-height: 164px;
+  padding: 12px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #f9fcf4, #f1f7ed);
+}
+
+.work-slot-card.locked {
+  opacity: 0.7;
+  background: #f6f6f0;
+}
+
+.work-slot-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.work-slot-head span {
+  color: var(--ink);
+  font-size: 0.86rem;
+  font-weight: 900;
+  cursor: help;
+}
+
+.work-slot-head strong {
+  color: var(--muted);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+}
+
+.work-slot-card.assigned .work-slot-head strong {
+  color: var(--green-deep);
+}
+
+.work-slot-body {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.work-slot-body b {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--green-deep);
+  font-size: 1rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.work-slot-body em {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.work-slot-build-button {
+  justify-self: start;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid rgba(71, 108, 79, 0.26);
+  border-radius: 7px;
+  background: #ffffff;
+  color: var(--green-deep);
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.work-slot-build-button.active {
+  border-color: var(--green-deep);
+  box-shadow: 0 0 0 2px rgba(71, 108, 79, 0.10);
+}
+
+.work-slot-build-options {
+  display: grid;
+  gap: 5px;
+  max-height: 190px;
+  overflow: auto;
+  padding-top: 2px;
+}
+
+.build-option {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fffef8;
+  color: var(--ink);
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-align: left;
+}
+
+.build-option span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.build-option strong {
+  color: var(--green-deep);
+  font-size: 0.76rem;
+}
+
+.build-option.selected {
+  border-color: var(--green-deep);
+  background: #eef7e7;
+}
+
+.build-option.clear {
+  color: var(--muted);
+}
+
+.work-slot-lock-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+@media (max-width: 900px) {
+  .province-popover.province-popover-tabbed {
+    grid-template-columns: 1fr;
+    height: min(560px, calc(100% - 132px));
+    max-height: min(560px, calc(100% - 132px));
+  }
+
+  .province-popover-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .province-tab-button {
+    text-align: center;
+  }
+
+  .province-info-grid,
+  .production-slot-list {
+    grid-template-columns: 1fr;
+  }
 }

@@ -73,6 +73,7 @@
     'precious-vein': 'Prc',
     'gem-vein': 'Gem',
     volcanic: 'Vol',
+    'oyster-bed': 'Oys',
     'god-bless': 'God'
   };
 
@@ -1053,6 +1054,8 @@
         return terrain === 'mountains';
       case 'volcanic':
         return terrain === 'mountains';
+      case 'oyster-bed':
+        return hasTrait(traitSets, layout.index, 'coast') && (terrain === 'plains' || terrain === 'forests' || terrain === 'desert' || terrain === 'swamps');
       case 'god-bless':
         return true;
       default:
@@ -1078,6 +1081,7 @@
       'precious-vein': ({ mountains: 6.4, hills: 0.38 }[terrain] || 0),
       'gem-vein': ({ mountains: 5.8 }[terrain] || 0),
       volcanic: ({ mountains: 2.4 }[terrain] || 0),
+      'oyster-bed': hasTrait(traitSets, layout.index, 'coast') ? ({ desert: 2.2, plains: 1.8, swamps: 1.4, forests: 0.9 }[terrain] || 0) : 0,
       'god-bless': godBlessWeight(layout, traitSets, terrainAssignments, random)
     };
 
@@ -1419,9 +1423,20 @@
 
   function addDepositTraits(layouts, traitSets, terrainAssignments, random) {
     addRandomTraitByTerrain(layouts, traitSets, terrainAssignments, random, 'mineral-vein', { mountains: 0.38, hills: 0.04, desert: 0, plains: 0, forests: 0, swamps: 0, ocean: 0 });
-    addRandomTraitByTerrain(layouts, traitSets, terrainAssignments, random, 'precious-vein', { mountains: 0.14, hills: 0.012, desert: 0, plains: 0, forests: 0, swamps: 0, ocean: 0 });
-    addRandomTraitByTerrain(layouts, traitSets, terrainAssignments, random, 'gem-vein', { mountains: 0.055, hills: 0, desert: 0, plains: 0, forests: 0, swamps: 0, ocean: 0 });
-    addRandomTraitByTerrain(layouts, traitSets, terrainAssignments, random, 'volcanic', { mountains: 0.055, hills: 0, desert: 0, plains: 0, forests: 0, swamps: 0, ocean: 0 });
+    addRandomTraitByTerrain(layouts, traitSets, terrainAssignments, random, 'precious-vein', { mountains: 0.28, hills: 0.02, desert: 0, plains: 0, forests: 0, swamps: 0, ocean: 0 });
+    addRandomTraitByTerrain(layouts, traitSets, terrainAssignments, random, 'gem-vein', { mountains: 0.28, hills: 0, desert: 0, plains: 0, forests: 0, swamps: 0, ocean: 0 });
+    addRandomTraitByTerrain(layouts, traitSets, terrainAssignments, random, 'volcanic', { mountains: 0.28, hills: 0, desert: 0, plains: 0, forests: 0, swamps: 0, ocean: 0 });
+  }
+
+  function addOysterBedTraits(layouts, traitSets, terrainAssignments, random, worldShape) {
+    const oysterChance = worldShape === 'islands' ? 0.12 : 0.16;
+    const layoutsById = Object.fromEntries(layouts.map((layout) => [layout.id, layout]));
+    layouts.forEach((layout) => {
+      if (!isTraitAllowedForLayout('oyster-bed', layout, layoutsById, terrainAssignments, traitSets)) return;
+      if (random() < oysterChance) {
+        addTrait(traitSets, layout.index, 'oyster-bed');
+      }
+    });
   }
 
   function godBlessLimitForMapSize(mapSize) {
@@ -1462,6 +1477,7 @@
     addRandomTraitByTerrain(layouts, traitSets, terrainAssignments, random, 'forest-density', { mountains: 0.02, forests: 0.3, swamps: 0.18, hills: 0.1, plains: 0.05, desert: 0, ocean: 0 });
     addFertilityTraits(layouts, traitSets, terrainAssignments);
     addDepositTraits(layouts, traitSets, terrainAssignments, random);
+    addOysterBedTraits(layouts, traitSets, terrainAssignments, random, worldShape);
     addGodBlessTraits(layouts, traitSets, terrainAssignments, random, mapSize);
     ensureMinimumNaturalTraitCounts(layouts, traitSets, terrainAssignments, mapSize, random);
     addFertilityTraits(layouts, traitSets, terrainAssignments);

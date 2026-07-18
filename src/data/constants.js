@@ -32,8 +32,8 @@
 
   const prototypeMilestone = {
     name: 'Prototype 0.1',
-    day: 10,
-    focus: 'Natural traits and resource candidates',
+    day: 13,
+    focus: 'Rare resource logic',
     scope: [
       'Map generation',
       'Resources',
@@ -54,7 +54,7 @@
     worldShape: 'pangea',
     width: 16,
     height: 10,
-    seed: 'eco-ruler-day-10-resource-candidates',
+    seed: 'eco-ruler-day-13-rare-resources',
     worldProfile: 'temperate',
     clusterStrength: 60,
     terrainWeights: {

@@ -1,4 +1,4 @@
-﻿(function initializeResources(namespace) {
+(function initializeResources(namespace) {
   const resourceCategories = [
     { id: 'building', label: 'Building Materials' },
     { id: 'industry', label: 'Metals and Industry' },
@@ -47,14 +47,15 @@
   const naturalTraits = [
     { id: 'river', label: 'River', role: 'Improves crops, fish, clay, supply, and can pass through Desert without creating High Fertility.' },
     { id: 'lake', label: 'Lake', role: 'Improves fertility, fish, clay, supply, and special water resources.' },
-    { id: 'coast', label: 'Coast', role: 'Opens fish, pearls, salt, and sand through direct adjacency to Ocean.' },
+    { id: 'coast', label: 'Coast', role: 'Opens fish, salt, sand, and coastal resource conditions through direct adjacency to Ocean.' },
     { id: 'oasis', label: 'Oasis', role: 'Allows limited Desert farming, spices, cotton, and local supply.' },
     { id: 'high-fertility', label: 'High Fertility', role: 'Improves agricultural and animal output; never appears in Mountains, Desert, or Ocean.' },
     { id: 'forest-density', label: 'Forest Density', role: 'Richer forest cover that improves wood, herbs, honey, deer, foxes, defense, and slows movement.' },
     { id: 'mineral-vein', label: 'Mineral Vein', role: 'Opens or improves iron, copper, tin, and coal.' },
     { id: 'precious-vein', label: 'Precious Vein', role: 'Opens or improves gold and silver.' },
     { id: 'gem-vein', label: 'Gem Vein', role: 'Opens or improves diamonds.' },
-    { id: 'volcanic', label: 'Volcanic Trait', role: 'Opens or improves sulfur and can slightly improve precious metals.' },
+    { id: 'volcanic', label: 'Volcanic Trait', role: 'Opens or improves sulfur.' },
+    { id: 'oyster-bed', label: 'Oyster Bed', role: 'Rare coastal oyster grounds that open pearls.' },
     { id: 'god-bless', label: 'God Bless', role: 'Rare blessing that adds +100% to primary resource production only.' }
   ];
 
@@ -69,6 +70,7 @@
     'Precious Vein': 'precious-vein',
     'Gem Vein': 'gem-vein',
     'Volcanic Trait': 'volcanic',
+    'Oyster Bed': 'oyster-bed',
     'God Bless': 'god-bless'
   });
 
@@ -130,9 +132,9 @@
     rule('mountains', 'tin', 0.5, ['mineral-vein']),
     rule('mountains', 'coal', 0.5, ['mineral-vein']),
     rule('mountains', 'sulfur', 0.5, ['volcanic']),
-    rule('mountains', 'gold', 0.3, ['precious-vein', 'volcanic']),
-    rule('mountains', 'silver', 0.3, ['precious-vein', 'volcanic']),
-    rule('mountains', 'diamonds', 0.3, ['gem-vein', 'volcanic']),
+    rule('mountains', 'gold', 0.3, ['precious-vein']),
+    rule('mountains', 'silver', 0.3, ['precious-vein']),
+    rule('mountains', 'diamonds', 0.3, ['gem-vein']),
     rule('mountains', 'fish', 0.5, ['coast', 'river', 'lake']),
     rule('mountains', 'herbs', 0.2, ['forest-density']),
     rule('mountains', 'honey', 0.2, ['forest-density']),
@@ -145,6 +147,8 @@
     rule('hills', 'copper', 0.05, ['mineral-vein']),
     rule('hills', 'tin', 0.05, ['mineral-vein']),
     rule('hills', 'coal', 0.05, ['mineral-vein']),
+    rule('hills', 'gold', 0.05, ['precious-vein']),
+    rule('hills', 'silver', 0.05, ['precious-vein']),
     rule('hills', 'sulfur', 0.5, ['volcanic']),
     rule('hills', 'fish', 0.5, ['coast', 'river', 'lake']),
     rule('hills', 'wheat', 0.5),
@@ -157,7 +161,7 @@
 
     rule('plains', 'wood', 0.3, ['forest-density']),
     rule('plains', 'clay', 0.75, ['river', 'lake']),
-    rule('plains', 'pearls', 0.3, ['coast']),
+    rule('plains', 'pearls', 0.3, ['oyster-bed']),
     rule('plains', 'salt', 0.6, ['coast']),
     rule('plains', 'fish', 0.5, ['coast', 'river', 'lake']),
     rule('plains', 'spices', 0.1, ['coast', 'river', 'lake']),
@@ -175,7 +179,7 @@
 
     rule('forests', 'wood', 0.7),
     rule('forests', 'clay', 0.5, ['river', 'lake']),
-    rule('forests', 'pearls', 0.15, ['coast']),
+    rule('forests', 'pearls', 0.15, ['oyster-bed']),
     rule('forests', 'salt', 0.5, ['coast']),
     rule('forests', 'fish', 0.4, ['coast', 'river', 'lake']),
     rule('forests', 'herbs', 0.8),
@@ -184,7 +188,7 @@
     rule('forests', 'foxes', 0.8),
 
     rule('desert', 'sand', 1),
-    rule('desert', 'pearls', 0.5, ['coast']),
+    rule('desert', 'pearls', 0.5, ['oyster-bed']),
     rule('desert', 'salt', 0.65, ['coast']),
     rule('desert', 'fish', 0.5, ['coast', 'river', 'lake']),
     rule('desert', 'spices', 0.8, ['river', 'oasis']),
@@ -192,7 +196,7 @@
 
     rule('swamps', 'wood', 0.3, ['forest-density']),
     rule('swamps', 'clay', 1),
-    rule('swamps', 'pearls', 0.3, ['coast']),
+    rule('swamps', 'pearls', 0.3, ['oyster-bed']),
     rule('swamps', 'salt', 0.65, ['coast']),
     rule('swamps', 'fish', 0.5, ['coast', 'river', 'lake']),
     rule('swamps', 'cotton', 0.6),
@@ -214,13 +218,13 @@
     clay: { river: 0.25, lake: 0.25, 'god-bless': 1 },
     sand: { coast: 0.3, oasis: 0.2, 'god-bless': 1 },
     salt: { coast: 0.35, oasis: 0.35, 'god-bless': 1 },
-    pearls: { coast: 0.5, 'god-bless': 1 },
+    pearls: { 'oyster-bed': 0.5, 'god-bless': 1 },
     iron: { 'mineral-vein': 0.5, 'god-bless': 1 },
     copper: { 'mineral-vein': 0.5, 'god-bless': 1 },
     tin: { 'mineral-vein': 0.5, 'god-bless': 1 },
     coal: { 'mineral-vein': 0.5, 'god-bless': 1 },
-    gold: { 'precious-vein': 0.5, volcanic: 0.05, 'god-bless': 1 },
-    silver: { 'precious-vein': 0.5, volcanic: 0.05, 'god-bless': 1 },
+    gold: { 'precious-vein': 0.5, 'god-bless': 1 },
+    silver: { 'precious-vein': 0.5, 'god-bless': 1 },
     diamonds: { 'gem-vein': 0.75, 'god-bless': 1 },
     sulfur: { volcanic: 0.75, 'god-bless': 1 },
     stone: { 'god-bless': 1 },
