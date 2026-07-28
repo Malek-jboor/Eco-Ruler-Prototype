@@ -1,19 +1,77 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang='en'>
   <head>
     <meta charset='utf-8' />
     <meta name='viewport' content='width=device-width, initial-scale=1' />
     <title>Eco Ruler Prototype</title>
+    <link rel='icon' href='data:,' />
     <link rel='stylesheet' href='./src/styles/main.css' />
+    <link rel='stylesheet' href='./src/styles/task20-21.css' />
+    <link rel='stylesheet' href='./src/styles/task22-24.css' />
+    <link rel='stylesheet' href='./src/styles/full-map-ui.css' />
+    <link rel='stylesheet' href='./src/styles/manufacturing.css' />
+    <link rel='stylesheet' href='./src/styles/administration.css' />
+    <link rel='stylesheet' href='./src/styles/expansion.css' />
+    <link rel='stylesheet' href='./src/styles/satisfaction.css' />
   </head>
   <body>
     <div id='app' class='app-shell' aria-live='polite'></div>
     <script src='./src/data/constants.js'></script>
     <script src='./src/data/resources.js'></script>
+    <script src='./src/data/economy.js'></script>
+    <script src='./src/data/manufacturing.js'></script>
+    <script src='./src/data/development.js'></script>
+    <script src='./src/data/administration.js'></script>
+    <script src='./src/data/expansion.js'></script>
+    <script src='./src/data/lifecycle.js'></script>
+    <script src='./src/data/workforcePriority.js'></script>
+    <script src='./src/data/satisfaction.js'></script>
+    <script src='./src/data/health.js'></script>
     <script src='./src/sim/models.js'></script>
-    <script src='./src/sim/mapGenerator.js'></script>
+    <script src='./src/sim/settlements/foundation.js'></script>
+    <script src='./src/sim/settlements/hierarchy.js'></script>
+    <script src='./src/sim/resources/capacity.js'></script>
+    <script src='./src/sim/economy/storage.js'></script>
+    <script src='./src/sim/economy/resourceSites.js'></script>
+    <script src='./src/sim/economy/construction.js'></script>
+    <script src='./src/sim/economy/development.js'></script>
+    <script src='./src/sim/economy/workforce.js'></script>
+    <script src='./src/sim/economy/workforcePriority.js'></script>
+    <script src='./src/sim/economy/manufacturing.js'></script>
+    <script src='./src/sim/economy/administration.js'></script>
+    <script src='./src/sim/economy/satisfaction.js'></script>
+    <script src='./src/sim/economy/health.js'></script>
+    <script src='./src/sim/settlements/outposts.js'></script>
+    <script src='./src/sim/settlements/lifecycle.js'></script>
+    <script src='./src/sim/economy/daily.js'></script>
+    <script src='./src/sim/economy/flows.js'></script>
+    <script src='./src/sim/time/clock.js'></script>
+    <script src='./src/sim/map/core.js'></script>
+    <script src='./src/sim/map/geometry.js'></script>
+    <script src='./src/sim/map/worldShapes.js'></script>
+    <script src='./src/sim/map/terrain.js'></script>
+    <script src='./src/sim/map/traits.js'></script>
+    <script src='./src/sim/map/generator.js'></script>
     <script src='./src/sim/state.js'></script>
-    <script src='./src/ui/app.js'></script>
+    <script src='./src/ui/core.js'></script>
+    <script src='./src/ui/map/viewport.js'></script>
+    <script src='./src/ui/province/realm.js'></script>
+    <script src='./src/ui/economy/manufacturing.js'></script>
+    <script src='./src/ui/expansion/outposts.js'></script>
+    <script src='./src/ui/province/panel.js'></script>
+    <script src='./src/ui/economy/storage.js'></script>
+    <script src='./src/ui/economy/administration.js'></script>
+    <script src='./src/ui/people/satisfaction.js'></script>
+    <script src='./src/ui/people/health.js'></script>
+    <script src='./src/ui/map/render.js'></script>
+    <script src='./src/ui/tooltips/index.js'></script>
+    <script src='./src/vendor/lucide.min.js'></script>
+    <script src='./src/ui/app/realmBranches.js'></script>
+    <script src='./src/ui/app/realmSettlements.js'></script>
+    <script src='./src/ui/app/realmProduction.js'></script>
+    <script src='./src/ui/app/navigation.js'></script>
+    <script src='./src/ui/time/controller.js'></script>
+    <script src='./src/ui/app/index.js'></script>
     <script src='./src/main.js'></script>
   </body>
 </html>

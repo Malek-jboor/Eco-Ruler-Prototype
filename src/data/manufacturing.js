@@ -1,0 +1,250 @@
+(function initializeManufacturingData(namespace) {
+  const locations = Object.freeze({
+    urban: Object.freeze(['town', 'city', 'capital']),
+    agricultural: Object.freeze(['agricultural-village', 'town', 'city', 'capital']),
+    extractive: Object.freeze(['extractive-village', 'town', 'city', 'capital']),
+    trade: Object.freeze(['trade-village', 'town', 'city', 'capital']),
+    military: Object.freeze(['military-village', 'town', 'city', 'capital'])
+  });
+
+  function construction(footprint, cashPercent, days, maintenancePercent, materials) {
+    return Object.freeze({
+      footprint,
+      effort: footprint,
+      cashPercent,
+      days,
+      maintenancePercent,
+      materials: Object.freeze({ ...materials })
+    });
+  }
+
+  function recipe(ref, id, label, outputId, tier, annualOutput, workers, inputsPerCycle, outputPerCycle = 1, options = {}) {
+    return Object.freeze({
+      ref,
+      id,
+      label,
+      outputId,
+      tier,
+      annualOutput,
+      workers,
+      inputs: Object.freeze(Object.fromEntries(Object.entries(inputsPerCycle).map(([resourceId, amount]) => [
+        resourceId,
+        amount / outputPerCycle
+      ]))),
+      inputsPerCycle: Object.freeze({ ...inputsPerCycle }),
+      outputPerCycle,
+      research: options.research || 'tier-' + tier,
+      routeLabel: options.routeLabel || null,
+      prototypeDemand: options.prototypeDemand !== false,
+      specialCapacity: options.specialCapacity || null
+    });
+  }
+
+  const bronzeResearch = 'bronze-working';
+  const p = construction;
+  const constructionProfiles = Object.freeze({
+    sawmill: p(0.25, 75, 30, 8, { wood: 537, planks: 135, stone: 60, 'nails-fittings': 50 }),
+    'grain-mill': p(0.25, 75, 30, 8, { wood: 358, planks: 108, stone: 120, 'nails-fittings': 50 }),
+    bakery: p(0.1667, 100, 20, 8, { wood: 160, planks: 37, stone: 61, clay: 36, 'nails-fittings': 17 }),
+    'charcoal-burners-hut': p(0.1667, 50, 20, 5, { wood: 160, planks: 37, stone: 61, clay: 41 }),
+    'kiln-workshop': p(0.6, 75, 90, 8, { wood: 716, planks: 243, stone: 225, clay: 135, 'nails-fittings': 150 }),
+    tannery: p(0.25, 75, 30, 8, { wood: 299, planks: 108, stone: 90, clay: 23, 'nails-fittings': 50 }),
+    'weavers-workshop': p(0.1667, 75, 20, 8, { wood: 358, planks: 127, clay: 11, 'nails-fittings': 34 }),
+    'tailors-workshop': p(0.1667, 50, 20, 5, { wood: 319, planks: 127, clay: 16, 'nails-fittings': 34 }),
+    brewery: p(0.25, 75, 30, 8, { wood: 358, planks: 135, stone: 60, clay: 23, 'nails-fittings': 50 }),
+    'ration-kitchen': p(0.1667, 75, 20, 8, { wood: 199, planks: 55, stone: 61, clay: 26, 'nails-fittings': 17 }),
+    'carpenters-workshop': p(0.25, 75, 30, 8, { wood: 477, planks: 162, stone: 60, 'nails-fittings': 50 }),
+    'blacksmiths-workshop': p(0.5, 100, 60, 12, { wood: 358, planks: 108, stone: 180, clay: 60, 'nails-fittings': 250 }),
+    'armourers-workshop': p(0.5, 100, 60, 12, { wood: 358, planks: 108, stone: 150, clay: 60, 'nails-fittings': 300 }),
+    'weaponsmiths-workshop': p(0.5, 100, 60, 12, { wood: 358, planks: 162, stone: 120, clay: 60, 'nails-fittings': 300 }),
+    'stonecutting-workshop': p(0.3333, 75, 40, 8, { wood: 398, planks: 108, stone: 160, clay: 20, 'nails-fittings': 67 }),
+    'bronze-smelter': p(0.5, 100, 60, 12, { wood: 358, planks: 108, stone: 210, clay: 75, 'nails-fittings': 150 }),
+    'paper-mill': p(0.6, 100, 120, 8, { wood: 954, planks: 540, stone: 240, bricks: 480, 'nails-fittings': 300 }),
+    bookbindery: p(0.4, 100, 120, 8, { wood: 954, planks: 540, stone: 180, bricks: 480, glass: 30, 'nails-fittings': 200 }),
+    glassworks: p(0.8, 100, 120, 12, { wood: 477, planks: 216, stone: 300, clay: 120, bricks: 600, 'nails-fittings': 200 }),
+    'coopers-workshop': p(0.3, 33.33, 40, 8, { wood: 636, planks: 252, stone: 40, 'nails-fittings': 100 }),
+    smelter: p(1, 150, 180, 12, { wood: 1074, planks: 324, stone: 360, clay: 90, bricks: 720, 'roof-tiles': 180, 'nails-fittings': 450 }),
+    dairy: p(0.4, 50, 60, 8, { wood: 716, planks: 270, stone: 120, bricks: 120, 'roof-tiles': 30, 'nails-fittings': 100 }),
+    'chandlers-workshop': p(0.2, 33.33, 40, 5, { wood: 557, planks: 180, stone: 60, clay: 20, bricks: 40, 'nails-fittings': 67 }),
+    winery: p(0.4, 50, 60, 8, { wood: 716, planks: 270, stone: 90, clay: 30, bricks: 60, 'roof-tiles': 30, 'nails-fittings': 100 }),
+    apothecary: p(0.4, 75, 90, 8, { wood: 716, planks: 324, stone: 135, clay: 45, bricks: 180, 'roof-tiles': 45, glass: 23, 'nails-fittings': 150 }),
+    stable: p(1, 100, 120, 8, { wood: 1431, planks: 540, stone: 180, bricks: 240, 'roof-tiles': 120, 'nails-fittings': 200 }),
+    'siege-workshop': p(1.2, 200, 240, 12, { wood: 1908, planks: 1080, stone: 360, bricks: 720, 'roof-tiles': 240, 'nails-fittings': 600 }),
+    'chemical-workshop': p(0.6, 100, 120, 12, { wood: 477, planks: 216, stone: 300, clay: 90, bricks: 600, 'roof-tiles': 60, 'nails-fittings': 200 }),
+    cookhouse: p(0.3, 50, 60, 8, { wood: 597, planks: 162, stone: 120, clay: 45, bricks: 180, 'roof-tiles': 30, 'nails-fittings': 50 }),
+    'jewellers-workshop': p(0.3, 100, 120, 8, { wood: 477, planks: 216, stone: 180, bricks: 240, 'roof-tiles': 60, glass: 60, 'marble-blocks': 30, 'nails-fittings': 200 }),
+    mint: p(0.6, 200, 240, 12, { wood: 954, planks: 432, stone: 600, bricks: 960, 'roof-tiles': 240, glass: 120, 'marble-blocks': 200, 'nails-fittings': 600 })
+  });
+
+  const r = recipe;
+  const recipes = [
+    r('T1-01', 'planks', 'Planks', 'planks', 1, 2160, 18, { wood: 1 }),
+    r('T1-02', 'flour', 'Flour', 'flour', 1, 9600, 20, { wheat: 1 }),
+    r('T1-03', 'bread', 'Bread', 'bread', 1, 7200, 20, { flour: 1, coal: 0.25 }),
+    r('T1-04', 'coal-charcoal', 'Coal', 'coal', 1, 2666.7, 20, { wood: 2 }),
+    r('T1-05', 'pottery', 'Pottery', 'pottery', 1, 200, 30, { clay: 2, coal: 0.5 }),
+    r('T1-06', 'bronze-ingots', 'Bronze Ingots', 'bronze-ingots', 1, 3000, 100, { copper: 0.75, tin: 0.25, coal: 0.25 }, 1, { research: bronzeResearch }),
+    r('T1-07', 'leather', 'Leather', 'leather', 1, 600, 18, { hides: 1, salt: 0.2, wood: 0.5 }),
+    r('T1-08', 'cloth-cotton', 'Cloth from Cotton', 'cloth', 1, 528, 18, { cotton: 1 }, 1, { routeLabel: 'Cotton Route' }),
+    r('T1-09', 'cloth-wool', 'Cloth from Wool', 'cloth', 1, 528, 18, { wool: 4 }, 1, { routeLabel: 'Wool Route' }),
+    r('T1-10', 'bandages', 'Bandages', 'bandages', 1, 264, 18, { cloth: 2 }),
+    r('T1-11', 'simple-clothes-cloth', 'Simple Clothes from Cloth', 'simple-clothes', 1, 132, 18, { cloth: 4 }, 1, { routeLabel: 'Cloth Route' }),
+    r('T1-12', 'simple-clothes-leather', 'Simple Clothes from Leather', 'simple-clothes', 1, 132, 18, { leather: 4 }, 1, { routeLabel: 'Leather Route' }),
+    r('T1-13', 'liquor', 'Liquor', 'liquor', 1, 3333.3, 50, { wheat: 3, coal: 0.5 }),
+    r('T1-14', 'military-rations-fish', 'Military Rations from Fish', 'military-rations', 1, 1440, 18, { bread: 0.5, fish: 0.5, herbs: 0.125, salt: 0.125 }, 1, { routeLabel: 'Fish Route' }),
+    r('T1-15', 'military-rations-meat', 'Military Rations from Meat', 'military-rations', 1, 1440, 18, { bread: 0.5, meat: 0.5, herbs: 0.125, salt: 0.125 }, 1, { routeLabel: 'Meat Route' }),
+    r('T1-16', 'simple-tools', 'Simple Tools', 'simple-tools', 1, 1500, 30, { planks: 1 }),
+    r('T1-17', 'wooden-shield', 'Wooden Shield', 'wooden-shield', 1, 150, 30, { planks: 2, leather: 1 }),
+    r('T1-18', 'nails-fittings-bronze', 'Nails & Fittings from Bronze', 'nails-fittings', 1, 2000, 30, { 'bronze-ingots': 1, coal: 0.1 }, 5, { research: bronzeResearch, routeLabel: 'Bronze Route' }),
+    r('T1-19', 'horseshoes-bronze', 'Horseshoes from Bronze', 'horseshoes', 1, 300, 30, { 'bronze-ingots': 2, coal: 0.5 }, 1, { research: bronzeResearch, routeLabel: 'Bronze Route' }),
+    r('T1-20', 'bronze-tools', 'Bronze Tools', 'bronze-tools', 1, 750, 30, { 'bronze-ingots': 5, planks: 0.5, coal: 0.5 }, 1, { research: bronzeResearch }),
+    r('T1-21', 'cut-stone', 'Cut Stone', 'cut-stone', 1, 400, 40, { stone: 1 }),
+    r('T1-22', 'leather-armour', 'Leather Armour', 'leather-armour', 1, 120, 24, { leather: 5, coal: 1 }),
+    r('T1-23', 'bronze-armour', 'Bronze Armour', 'bronze-armour', 1, 60, 24, { 'bronze-ingots': 10, leather: 2, coal: 2 }, 1, { research: bronzeResearch }),
+    r('T1-24', 'bronze-sword', 'Bronze Sword', 'bronze-sword', 1, 120, 30, { 'bronze-ingots': 4, leather: 1, coal: 1 }, 1, { research: bronzeResearch }),
+    r('T1-25', 'bronze-spear', 'Bronze Spear', 'bronze-spear', 1, 120, 30, { 'bronze-ingots': 3, planks: 1, coal: 1 }, 1, { research: bronzeResearch }),
+    r('T1-26', 'bronze-bow', 'Bronze Bow', 'bronze-bow', 1, 120, 30, { 'bronze-ingots': 2, planks: 2, leather: 1, coal: 1 }, 1, { research: bronzeResearch }),
+    r('T1-27', 'paper', 'Paper', 'paper', 1, 19200, 72, { wood: 40 }, 40, { prototypeDemand: false }),
+    r('T1-28', 'bricks', 'Bricks', 'bricks', 1, 2400, 24, { clay: 5, coal: 2 }, 20),
+    r('T2-01', 'iron-ingots', 'Iron Ingots', 'iron-ingots', 2, 1800, 30, { iron: 1, coal: 0.25 }),
+    r('T2-02', 'gold-ingots', 'Gold Ingots', 'gold-ingots', 2, 100, 18, { gold: 1, coal: 0.5 }),
+    r('T2-03', 'silver-ingots', 'Silver Ingots', 'silver-ingots', 2, 150, 18, { silver: 1, coal: 0.5 }),
+    r('T2-04', 'marble-blocks', 'Marble Blocks', 'marble-blocks', 2, 300, 24, { marble: 1 }),
+    r('T2-06', 'roof-tiles', 'Roof Tiles', 'roof-tiles', 2, 1200, 24, { clay: 5, coal: 2 }, 10),
+    r('T2-07', 'glass', 'Glass', 'glass', 2, 300, 30, { sand: 2, coal: 0.5 }),
+    r('T2-08', 'glassware', 'Glassware', 'glassware', 2, 1200, 24, { glass: 2, coal: 0.25 }, 10),
+    r('T2-09', 'butter', 'Butter', 'butter', 2, 600, 18, { milk: 2, coal: 0.25 }),
+    r('T2-10', 'cheese', 'Cheese', 'cheese', 2, 480, 18, { milk: 2, salt: 0.1, coal: 0.25 }),
+    r('T2-11', 'candles', 'Candles', 'candles', 2, 600, 12, { beeswax: 1, cloth: 0.1 }),
+    r('T2-14', 'barrels', 'Barrels', 'barrels', 2, 120, 18, { planks: 4, 'nails-fittings': 1 }),
+    r('T2-15', 'furniture', 'Furniture', 'furniture', 2, 60, 24, { planks: 8, 'nails-fittings': 5 }),
+    r('T2-16', 'wine', 'Wine', 'wine', 2, 1200, 18, { fruit: 3, coal: 0.25 }),
+    r('T2-17', 'spiced-wine', 'Spiced Wine', 'spiced-wine', 2, 600, 18, { fruit: 3, spices: 0.2, coal: 0.25 }),
+    r('T2-18', 'normal-clothes', 'Normal Clothes', 'normal-clothes', 2, 120, 24, { cloth: 6, leather: 5 }),
+    r('T2-19', 'healing-salve', 'Healing Salve', 'healing-salve', 2, 240, 18, { herbs: 2, honey: 1 }),
+    r('T2-20', 'herbal-medicine', 'Herbal Medicine', 'herbal-medicine', 2, 180, 24, { herbs: 3, honey: 1 }),
+    r('T2-21', 'treated-bandages', 'Treated Bandages', 'treated-bandages', 2, 180, 18, { bandages: 1, 'healing-salve': 0.5 }),
+    r('T2-22', 'iron-tools', 'Iron Tools', 'iron-tools', 2, 800, 24, { 'iron-ingots': 3, planks: 0.5, coal: 0.5 }),
+    r('T2-23', 'nails-fittings-iron', 'Nails & Fittings from Iron', 'nails-fittings', 2, 1200, 24, { 'iron-ingots': 0.15, coal: 0.05 }, 1, { routeLabel: 'Iron Route' }),
+    r('T2-24', 'horseshoes-iron', 'Horseshoes from Iron', 'horseshoes', 2, 240, 24, { 'iron-ingots': 1.5, coal: 0.25 }, 1, { routeLabel: 'Iron Route' }),
+    r('T2-25', 'iron-armour', 'Iron Armour', 'iron-armour', 2, 72, 24, { 'iron-ingots': 8, leather: 2, coal: 1.5 }),
+    r('T2-26', 'iron-sword', 'Iron Sword', 'iron-sword', 2, 160, 30, { 'iron-ingots': 3, leather: 1, coal: 0.5 }),
+    r('T2-27', 'iron-spear', 'Iron Spear', 'iron-spear', 2, 160, 30, { 'iron-ingots': 2, planks: 1, coal: 0.5 }),
+    r('T2-28', 'iron-bow', 'Iron Bow', 'iron-bow', 2, 160, 30, { 'iron-ingots': 1.5, planks: 2, leather: 1, coal: 0.5 }),
+    r('T2-29', 'bronze-hammer', 'Bronze Hammer', 'bronze-hammer', 2, 120, 30, { 'bronze-ingots': 4, planks: 1, leather: 1, coal: 1 }),
+    r('T2-30', 'iron-hammer', 'Iron Hammer', 'iron-hammer', 2, 160, 30, { 'iron-ingots': 3, planks: 1, leather: 1, coal: 0.5 }),
+    r('T2-31', 'saddle', 'Saddle', 'saddle', 2, 120, 24, { leather: 6, planks: 2, 'nails-fittings': 2 }),
+    r('T2-32', 'warhorse', 'Warhorse', 'warhorse', 2, 120, 30, { horses: 1, saddle: 1, wheat: 20 }, 1, { specialCapacity: 'stable' }),
+    r('T2-33', 'ballista', 'Ballista', 'ballista', 2, 12, 60, { planks: 30, 'iron-ingots': 40, leather: 5, 'nails-fittings': 5 }, 1, { specialCapacity: 'army-order' }),
+    r('T2-34', 'mangonel', 'Mangonel', 'mangonel', 2, 6, 48, { planks: 50, 'iron-ingots': 15, leather: 10, 'nails-fittings': 10, horses: 4 }, 1, { specialCapacity: 'army-order' }),
+    r('T3-01', 'steel-ingots', 'Steel Ingots', 'steel-ingots', 3, 1200, 60, { 'iron-ingots': 1, coal: 0.5 }),
+    r('T3-02', 'luxury-furniture', 'Luxury Furniture', 'luxury-furniture', 3, 30, 30, { planks: 10, 'nails-fittings': 5, cloth: 2, 'marble-blocks': 0.5 }),
+    r('T3-03', 'luxury-clothes', 'Luxury Clothes', 'luxury-clothes', 3, 120, 30, { cloth: 6, fur: 2 }),
+    r('T3-04', 'steel-tools', 'Steel Tools', 'steel-tools', 3, 900, 24, { 'steel-ingots': 2, planks: 0.5, coal: 0.5 }),
+    r('T3-05', 'nails-fittings-steel', 'Nails & Fittings from Steel', 'nails-fittings', 3, 1200, 24, { 'steel-ingots': 0.1, coal: 0.03 }, 1, { routeLabel: 'Steel Route' }),
+    r('T3-06', 'horseshoes-steel', 'Horseshoes from Steel', 'horseshoes', 3, 240, 24, { 'steel-ingots': 1, coal: 0.2 }, 1, { routeLabel: 'Steel Route' }),
+    r('T3-07', 'steel-armour', 'Steel Armour', 'steel-armour', 3, 90, 24, { 'steel-ingots': 6, leather: 2, coal: 1 }),
+    r('T3-08', 'steel-sword', 'Steel Sword', 'steel-sword', 3, 200, 30, { 'steel-ingots': 2, leather: 1, coal: 0.5 }),
+    r('T3-09', 'steel-spear', 'Steel Spear', 'steel-spear', 3, 200, 30, { 'steel-ingots': 1.5, planks: 1, coal: 0.5 }),
+    r('T3-10', 'steel-bow', 'Steel Bow', 'steel-bow', 3, 200, 30, { 'steel-ingots': 1, planks: 2, leather: 1, coal: 0.5 }),
+    r('T3-11', 'steel-hammer', 'Steel Hammer', 'steel-hammer', 3, 200, 30, { 'steel-ingots': 2, planks: 1, leather: 1, coal: 0.5 }),
+    r('T3-12', 'cannon', 'Cannon', 'cannon', 3, 4, 60, { 'steel-ingots': 40, 'bronze-ingots': 20, planks: 20, 'nails-fittings': 50 }, 1, { specialCapacity: 'army-order' }),
+    r('T3-13', 'gunpowder', 'Gunpowder', 'gunpowder', 3, 600, 30, { sulfur: 1, coal: 1, salt: 0.5 }),
+    r('T3-14', 'spiced-meat', 'Spiced Meat', 'spiced-meat', 3, 600, 18, { meat: 2, spices: 0.2, salt: 0.1 }),
+    r('T3-15', 'jewellery-gold', 'Jewellery from Gold', 'jewellery', 3, 60, 24, { 'gold-ingots': 1, diamonds: 0.1 }, 1, { routeLabel: 'Gold Route' }),
+    r('T3-16', 'jewellery-silver', 'Jewellery from Silver', 'jewellery', 3, 60, 24, { 'silver-ingots': 1, pearls: 0.2 }, 1, { routeLabel: 'Silver Route' }),
+    r('T3-17', 'coins-gold', 'Coins from Gold', 'coins', 3, 3000, 18, { 'gold-ingots': 1 }, 10, { routeLabel: 'Gold Route', specialCapacity: 'treasury' }),
+    r('T3-18', 'coins-silver', 'Coins from Silver', 'coins', 3, 2250, 18, { 'silver-ingots': 1 }, 5, { routeLabel: 'Silver Route', specialCapacity: 'treasury' }),
+    r('T3-19', 'books', 'Books', 'books', 3, 1200, 30, { paper: 40, leather: 2 }, 10, { prototypeDemand: false })
+  ];
+
+  const buildingMeta = Object.freeze({
+    sawmill: ['Sawmill', 'production', locations.extractive],
+    'grain-mill': ['Grain Mill', 'production', locations.agricultural],
+    bakery: ['Bakery', 'production', locations.trade],
+    'charcoal-burners-hut': ["Charcoal Burner's Hut", 'production', locations.extractive],
+    'kiln-workshop': ['Kiln Workshop', 'production', locations.trade],
+    'bronze-smelter': ['Bronze Smelter', 'production', locations.urban],
+    tannery: ['Tannery', 'production', locations.agricultural],
+    'weavers-workshop': ["Weaver's Workshop", 'production', locations.trade],
+    'tailors-workshop': ["Tailor's Workshop", 'production', locations.trade],
+    brewery: ['Brewery', 'production', locations.trade],
+    'ration-kitchen': ['Ration Kitchen', 'military', locations.military],
+    'carpenters-workshop': ["Carpenter's Workshop", 'production', locations.trade],
+    'blacksmiths-workshop': ["Blacksmith's Workshop", 'production', locations.urban],
+    'stonecutting-workshop': ['Stonecutting Workshop', 'production', locations.urban],
+    'armourers-workshop': ["Armourer's Workshop", 'military', locations.urban],
+    'weaponsmiths-workshop': ["Weaponsmith's Workshop", 'military', locations.urban],
+    'paper-mill': ['Paper Mill', 'production', locations.trade],
+    smelter: ['Smelter', 'production', locations.urban],
+    glassworks: ['Glassworks', 'production', locations.urban],
+    dairy: ['Dairy', 'production', locations.urban],
+    'chandlers-workshop': ["Chandler's Workshop", 'production', locations.urban],
+    'coopers-workshop': ["Cooper's Workshop", 'production', locations.urban],
+    winery: ['Winery', 'production', locations.urban],
+    apothecary: ['Apothecary', 'production', locations.urban],
+    stable: ['Stable', 'military', locations.urban],
+    'siege-workshop': ['Siege Workshop', 'military', locations.urban],
+    'chemical-workshop': ['Chemical Workshop', 'production', locations.urban],
+    cookhouse: ['Cookhouse', 'production', locations.urban],
+    'jewellers-workshop': ["Jeweller's Workshop", 'production', locations.urban],
+    mint: ['Mint', 'administrative', Object.freeze(['capital'])],
+    bookbindery: ['Bookbindery', 'administrative', locations.urban]
+  });
+
+  const recipeBuildings = Object.freeze({
+    'T1-01': 'sawmill', 'T1-02': 'grain-mill', 'T1-03': 'bakery', 'T1-04': 'charcoal-burners-hut',
+    'T1-05': 'kiln-workshop', 'T1-06': 'bronze-smelter', 'T1-07': 'tannery',
+    'T1-08': 'weavers-workshop', 'T1-09': 'weavers-workshop', 'T1-10': 'weavers-workshop',
+    'T1-11': 'tailors-workshop', 'T1-12': 'tailors-workshop', 'T1-13': 'brewery',
+    'T1-14': 'ration-kitchen', 'T1-15': 'ration-kitchen', 'T1-16': 'carpenters-workshop',
+    'T1-17': 'carpenters-workshop', 'T1-18': 'blacksmiths-workshop', 'T1-19': 'blacksmiths-workshop',
+    'T1-20': 'blacksmiths-workshop', 'T1-21': 'stonecutting-workshop',
+    'T1-22': 'armourers-workshop', 'T1-23': 'armourers-workshop',
+    'T1-24': 'weaponsmiths-workshop', 'T1-25': 'weaponsmiths-workshop',
+    'T1-26': 'weaponsmiths-workshop', 'T1-27': 'paper-mill', 'T1-28': 'kiln-workshop',
+    'T2-01': 'smelter', 'T2-02': 'smelter', 'T2-03': 'smelter',
+    'T2-04': 'stonecutting-workshop', 'T2-06': 'kiln-workshop',
+    'T2-07': 'glassworks', 'T2-08': 'glassworks', 'T2-09': 'dairy', 'T2-10': 'dairy',
+    'T2-11': 'chandlers-workshop', 'T2-14': 'coopers-workshop',
+    'T2-15': 'carpenters-workshop', 'T2-16': 'winery', 'T2-17': 'winery',
+    'T2-18': 'tailors-workshop', 'T2-19': 'apothecary', 'T2-20': 'apothecary',
+    'T2-21': 'apothecary', 'T2-22': 'blacksmiths-workshop', 'T2-23': 'blacksmiths-workshop',
+    'T2-24': 'blacksmiths-workshop', 'T2-25': 'armourers-workshop',
+    'T2-26': 'weaponsmiths-workshop', 'T2-27': 'weaponsmiths-workshop',
+    'T2-28': 'weaponsmiths-workshop', 'T2-29': 'weaponsmiths-workshop',
+    'T2-30': 'weaponsmiths-workshop', 'T2-31': 'armourers-workshop',
+    'T2-32': 'stable', 'T2-33': 'siege-workshop', 'T2-34': 'siege-workshop',
+    'T3-01': 'smelter', 'T3-02': 'carpenters-workshop', 'T3-03': 'tailors-workshop',
+    'T3-04': 'blacksmiths-workshop', 'T3-05': 'blacksmiths-workshop', 'T3-06': 'blacksmiths-workshop',
+    'T3-07': 'armourers-workshop', 'T3-08': 'weaponsmiths-workshop',
+    'T3-09': 'weaponsmiths-workshop', 'T3-10': 'weaponsmiths-workshop',
+    'T3-11': 'weaponsmiths-workshop', 'T3-12': 'siege-workshop',
+    'T3-13': 'chemical-workshop', 'T3-14': 'cookhouse',
+    'T3-15': 'jewellers-workshop', 'T3-16': 'jewellers-workshop',
+    'T3-17': 'mint', 'T3-18': 'mint', 'T3-19': 'bookbindery'
+  });
+
+  const processingBuildings = Object.freeze(Object.entries(buildingMeta).reduce((result, [id, meta]) => {
+    result[id] = Object.freeze({
+      id,
+      label: meta[0],
+      category: meta[1],
+      locations: Object.freeze([...meta[2]]),
+      capitalOnly: id === 'mint',
+      construction: constructionProfiles[id],
+      recipes: Object.freeze(recipes.filter((item) => recipeBuildings[item.ref] === id))
+    });
+    return result;
+  }, {}));
+
+  namespace.manufacturingData = Object.freeze({
+    bronzeResearch,
+    locations,
+    constructionProfiles,
+    recipeList: Object.freeze(recipes),
+    buildingAliases: Object.freeze({ 'potters-workshop': 'kiln-workshop' }),
+    processingBuildings,
+    processingBuildingList: Object.freeze(Object.keys(buildingMeta).map((id) => processingBuildings[id]))
+  });
+})(window.EcoRuler = window.EcoRuler || {});

@@ -46,7 +46,10 @@
   const timeScale = {
     seasonLengthDays: 30,
     seasonsPerYear: 4,
-    normalSecondsPerDay: 10
+    daysPerYear: 120,
+    normalSecondsPerDay: 10,
+    seasons: ['Spring', 'Summer', 'Autumn', 'Winter'],
+    speeds: [1, 2, 4]
   };
 
   const mapDefaults = {
@@ -55,6 +58,7 @@
     width: 16,
     height: 10,
     seed: 'eco-ruler-day-13-rare-resources',
+    startSeed: 'eco-ruler-start-1',
     worldProfile: 'temperate',
     clusterStrength: 60,
     terrainWeights: {

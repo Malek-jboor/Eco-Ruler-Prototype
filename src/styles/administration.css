@@ -1,0 +1,131 @@
+.control-branch-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.control-branch-card {
+  padding: 0.8rem;
+  border: 1px solid var(--line, #cbd4c4);
+  border-radius: 0.6rem;
+  background: var(--surface, #f8faf5);
+}
+
+.control-branch-card > header,
+.control-branch-card > header > div,
+.country-request-control,
+.admin-office-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.control-branch-card > header {
+  justify-content: space-between;
+}
+
+.control-branch-card > header > div {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.control-branch-card > header small,
+.control-village-list small {
+  color: var(--muted, #687265);
+}
+
+.control-coverage {
+  color: var(--success, #2f6b48);
+}
+
+.control-coverage.short {
+  color: var(--danger, #a43d42);
+}
+
+.control-branch-card > dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem 0.75rem;
+  margin: 0.7rem 0;
+}
+
+.control-branch-card > dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.country-request-control {
+  justify-content: flex-end;
+}
+
+.country-request-control label,
+.admin-office-setting {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+}
+
+.country-request-control input,
+.admin-office-setting input,
+.admin-office-setting select {
+  min-width: 4.5rem;
+  border: 1px solid var(--line, #cbd4c4);
+  border-radius: 0.35rem;
+  padding: 0.35rem;
+  background: #fff;
+}
+
+.control-village-list {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.65rem;
+}
+
+.control-village-list > span {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.1rem 0.5rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--line, #dbe2d6);
+}
+
+.control-village-list small {
+  grid-column: 1;
+}
+
+.control-village-list b {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+}
+
+.founder-control-note {
+  padding: 0.45rem 0.55rem;
+  border-left: 3px solid var(--accent, #376a4a);
+  background: rgba(55, 106, 74, 0.08);
+  font-size: 0.78rem;
+}
+
+.administrative-office-card dl .wide {
+  grid-column: 1 / -1;
+}
+
+.admin-office-controls {
+  flex-wrap: wrap;
+  justify-content: space-between;
+  margin: 0.65rem 0;
+}
+
+@media (max-width: 720px) {
+  .control-branch-card > dl {
+    grid-template-columns: 1fr;
+  }
+
+  .country-request-control,
+  .admin-office-controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

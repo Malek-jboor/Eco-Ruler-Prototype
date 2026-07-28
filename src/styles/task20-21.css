@@ -1,0 +1,132 @@
+.panel-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.panel-title-row > strong {
+  color: var(--green-deep);
+  font-size: 0.72rem;
+}
+
+.storage-meter {
+  height: 8px;
+  margin-top: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(71, 108, 79, 0.2);
+  border-radius: 4px;
+  background: #edf1e8;
+}
+
+.storage-meter > span {
+  display: block;
+  height: 100%;
+  background: #476c4f;
+}
+
+.storage-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin: 10px 0 0;
+}
+
+.storage-summary-grid > div {
+  min-width: 0;
+  padding: 7px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #f8faf4;
+}
+
+.storage-summary-grid dt {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.storage-summary-grid dd {
+  margin: 2px 0 0;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.storage-ledger-details {
+  margin-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.storage-ledger-details > summary {
+  padding: 10px 0 6px;
+  color: var(--green-deep);
+  cursor: pointer;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.storage-table-wrap {
+  min-height: 0;
+  max-height: none;
+  flex: 1;
+  overflow: auto;
+}
+
+.storage-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.68rem;
+}
+
+.storage-table th,
+.storage-table td {
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--line);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.storage-table th:first-child {
+  text-align: left;
+}
+
+.storage-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #f3f6ee;
+  color: var(--muted);
+}
+
+.storage-table .storage-category-row th {
+  padding: 8px 6px;
+  background: #e9efe5;
+  color: var(--green-deep);
+  font-size: 0.7rem;
+  letter-spacing: 0;
+  text-align: left;
+}
+
+.storage-ledger-panel {
+  min-height: 0;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.storage-ledger-details[open] {
+  min-height: 0;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.storage-ledger-panel .profile-note {
+  margin-top: 10px;
+}
+
+.potential-level {
+  color: var(--green-deep);
+  font-size: 0.76rem;
+  white-space: nowrap;
+}

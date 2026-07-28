@@ -1,0 +1,86 @@
+(function initializeWorkforcePriorityData(namespace) {
+  const type = (id, label, kind, sourceId = id) => Object.freeze({ id, label, kind, sourceId });
+  const defaultOrder = Object.freeze([
+    type('wheat-farm', 'Wheat Farm', 'resource', 'wheat'),
+    type('grain-mill', 'Grain Mill', 'processing'),
+    type('bakery', 'Bakery', 'processing'),
+    type('fishery', 'Fishery', 'resource', 'fish'),
+    type('deer-hunting-camp', 'Deer Hunting Camp', 'resource', 'deer'),
+    type('cattle-pasture', 'Cattle Pasture', 'resource', 'cattle'),
+    type('sheep-pasture', 'Sheep Pasture', 'resource', 'sheep'),
+    type('dairy', 'Dairy', 'processing'),
+    type('vegetable-farm', 'Vegetable Farm', 'resource', 'vegetables'),
+    type('fruit-orchard', 'Fruit Orchard', 'resource', 'fruit'),
+    type('cookhouse', 'Cookhouse', 'processing'),
+    type('woodcutters-camp', "Woodcutters' Camp", 'resource', 'wood'),
+    type('paper-mill', 'Paper Mill', 'processing'),
+    type('saltworks', 'Saltworks', 'resource', 'salt'),
+    type('tannery', 'Tannery', 'processing'),
+    type('bookbindery', 'Bookbindery', 'processing'),
+    type('ministry', 'Ministry', 'service'),
+    type('chancery', 'Chancery', 'service'),
+    type('local-registry', 'Local Registry', 'service'),
+    type('town-hall', 'Town Hall', 'service'),
+    type('hospital', 'Hospital', 'service'),
+    type('clinic', 'Clinic', 'service'),
+    type('cotton-farm', 'Cotton Farm', 'resource', 'cotton'),
+    type('weavers-workshop', "Weaver's Workshop", 'processing'),
+    type('herb-farm', 'Herb Farm', 'resource', 'herbs'),
+    type('apiary', 'Apiary', 'resource', 'honey'),
+    type('apothecary', 'Apothecary', 'processing'),
+    type('local-watch', 'Local Watch', 'service'),
+    type('sawmill', 'Sawmill', 'processing'),
+    type('carpenters-workshop', "Carpenter's Workshop", 'processing'),
+    type('coal-mine', 'Coal Mine', 'resource', 'coal'),
+    type('charcoal-burners-hut', "Charcoal Burner's Hut", 'processing'),
+    type('copper-mine', 'Copper Mine', 'resource', 'copper'),
+    type('tin-mine', 'Tin Mine', 'resource', 'tin'),
+    type('bronze-smelter', 'Bronze Smelter', 'processing'),
+    type('iron-mine', 'Iron Mine', 'resource', 'iron'),
+    type('smelter', 'Smelter', 'processing'),
+    type('blacksmiths-workshop', "Blacksmith's Workshop", 'processing'),
+    type('tailors-workshop', "Tailor's Workshop", 'processing'),
+    type('religious-services', 'Religious Services', 'service'),
+    type('stone-quarry', 'Stone Quarry', 'resource', 'stone'),
+    type('stonecutting-workshop', 'Stonecutting Workshop', 'processing'),
+    type('clay-pit', 'Clay Pit', 'resource', 'clay'),
+    type('kiln-workshop', 'Kiln Workshop', 'processing'),
+    type('ration-kitchen', 'Ration Kitchen', 'processing'),
+    type('active-soldiers', 'Active Soldiers', 'service'),
+    type('armourers-workshop', "Armourer's Workshop", 'processing'),
+    type('weaponsmiths-workshop', "Weaponsmith's Workshop", 'processing'),
+    type('horse-pasture', 'Horse Pasture', 'resource', 'horses'),
+    type('stable', 'Stable', 'processing'),
+    type('sulfur-mine', 'Sulfur Mine', 'resource', 'sulfur'),
+    type('chemical-workshop', 'Chemical Workshop', 'processing'),
+    type('siege-workshop', 'Siege Workshop', 'processing'),
+    type('sand-pit', 'Sand Pit', 'resource', 'sand'),
+    type('glassworks', 'Glassworks', 'processing'),
+    type('marble-quarry', 'Marble Quarry', 'resource', 'marble'),
+    type('brewery', 'Brewery', 'processing'),
+    type('spice-garden', 'Spice Garden', 'resource', 'spices'),
+    type('winery', 'Winery', 'processing'),
+    type('fox-trapping-camp', 'Fox Trapping Camp', 'resource', 'foxes'),
+    type('chandlers-workshop', "Chandler's Workshop", 'processing'),
+    type('coopers-workshop', "Cooper's Workshop", 'processing'),
+    type('gold-mine', 'Gold Mine', 'resource', 'gold'),
+    type('silver-mine', 'Silver Mine', 'resource', 'silver'),
+    type('pearl-extraction-site', 'Pearl Extraction Site', 'resource', 'pearls'),
+    type('gem-mine', 'Gem Mine', 'resource', 'diamonds'),
+    type('jewellers-workshop', "Jeweller's Workshop", 'processing'),
+    type('mint', 'Mint', 'processing')
+  ]);
+
+  const byId = Object.freeze(Object.fromEntries(defaultOrder.map((entry) => [entry.id, entry])));
+  const resourceTypeByResourceId = Object.freeze(Object.fromEntries(
+    defaultOrder.filter((entry) => entry.kind === 'resource')
+      .map((entry) => [entry.sourceId, entry.id])
+  ));
+
+  namespace.workforcePriorityData = Object.freeze({
+    defaultOrder,
+    defaultIds: Object.freeze(defaultOrder.map((entry) => entry.id)),
+    byId,
+    resourceTypeByResourceId
+  });
+})(window.EcoRuler = window.EcoRuler || {});

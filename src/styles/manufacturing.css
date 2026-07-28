@@ -1,0 +1,406 @@
+﻿.processing-building-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 10px;
+}
+
+.processing-building-card {
+  min-width: 0;
+  border: 1px solid var(--line, #ccd4c5);
+  background: rgba(246, 249, 242, 0.96);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.processing-card-open {
+  width: 100%;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px;
+  border: 0;
+  border-bottom: 1px solid var(--line, #ccd4c5);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.processing-card-open span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.processing-card-open small,
+.processing-card-open strong {
+  overflow-wrap: anywhere;
+}
+
+.processing-building-card > dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+  padding: 8px;
+  gap: 5px;
+}
+
+.processing-building-card > dl > div,
+.manufacturing-summary > div,
+.manufacturing-recipe dl > div {
+  min-width: 0;
+  padding: 7px;
+  background: rgba(230, 237, 224, 0.72);
+}
+
+.processing-building-card dt,
+.manufacturing-summary span,
+.manufacturing-recipe dt {
+  display: block;
+  color: #576156;
+  font-size: 10px;
+}
+
+.processing-building-card dd,
+.manufacturing-summary strong,
+.manufacturing-recipe dd {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.processing-building-card .wide {
+  grid-column: 1 / -1;
+}
+
+.processing-project-list {
+  display: grid;
+  gap: 6px;
+  padding: 0 8px 8px;
+}
+
+.processing-project {
+  display: grid;
+  gap: 5px;
+}
+
+.processing-project > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.processing-building-detail {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.manufacturing-form {
+  display: grid;
+  gap: 12px;
+}
+
+.manufacturing-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.manufacturing-worker-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px;
+  border: 1px solid var(--line, #ccd4c5);
+  background: rgba(246, 249, 242, 0.96);
+  border-radius: 6px;
+}
+
+.manufacturing-worker-section h4,
+.manufacturing-worker-section p {
+  margin: 0;
+}
+
+.manufacturing-worker-section p {
+  color: #667066;
+  font-size: 11px;
+}
+
+.processing-worker-control,
+.allocation-control {
+  display: grid;
+  align-items: center;
+  gap: 7px;
+}
+
+.processing-worker-control {
+  grid-template-columns: 34px minmax(120px, 1fr) 76px 34px;
+  width: min(100%, 420px);
+}
+
+.allocation-control {
+  grid-template-columns: minmax(110px, 1fr) 72px 14px;
+}
+
+.processing-worker-control button,
+.processing-worker-control input,
+.allocation-control input {
+  min-width: 0;
+  height: 32px;
+}
+
+.manufacturing-recipe-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 8px;
+}
+
+.manufacturing-recipe {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line, #ccd4c5);
+  background: rgba(246, 249, 242, 0.96);
+  border-radius: 6px;
+}
+
+.manufacturing-recipe.locked {
+  opacity: 0.65;
+}
+
+.manufacturing-recipe header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.manufacturing-recipe header > div {
+  display: grid;
+  gap: 2px;
+}
+
+.manufacturing-recipe dl {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.manufacturing-recipe dd {
+  font-size: 11px;
+}
+
+.recipe-lock-note {
+  margin: 0;
+  color: #7b3f3f;
+  font-size: 11px;
+}
+
+.manufacturing-form-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  min-height: 42px;
+}
+
+.manufacturing-form-footer span {
+  color: #667066;
+  font-size: 11px;
+}
+
+.processing-detail-actions {
+  justify-content: flex-end;
+}
+
+.build-card {
+  min-width: 0;
+}
+
+.build-card > span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  text-align: left;
+}
+
+.build-card > svg {
+  flex: 0 0 auto;
+}
+
+.build-card.locked {
+  opacity: 0.62;
+}
+
+.production-hud-alert {
+  width: 34px;
+  height: 34px;
+  display: inline-grid;
+  place-items: center;
+  border-color: #a96f24;
+  background: #f2d39b;
+  color: #6d4313;
+}
+
+@media (max-width: 900px) {
+  .manufacturing-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .manufacturing-worker-section {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .processing-worker-control {
+    width: 100%;
+  }
+}
+.economic-setting-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(120px, 1fr));
+  gap: 8px;
+  width: min(100%, 560px);
+}
+
+.economic-setting-grid label {
+  display: grid;
+  gap: 4px;
+  color: #667066;
+  font-size: 11px;
+}
+
+.economic-setting-grid select {
+  min-width: 0;
+  height: 32px;
+}
+.warehouse-maintenance-control {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0;
+  color: #667066;
+  font-size: 11px;
+}
+
+.warehouse-maintenance-control select {
+  height: 32px;
+}
+@media (max-width: 760px) {
+  .economic-setting-grid {
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+}
+.compact-production-list {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.compact-production-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.8fr) minmax(360px, 2fr) minmax(180px, 0.8fr);
+  align-items: center;
+  min-height: 86px;
+  overflow: visible;
+}
+
+.compact-production-row .processing-card-open {
+  min-height: 100%;
+  border-bottom: 0;
+  border-right: 1px solid var(--line, #ccd4c5);
+}
+
+.compact-production-row > dl {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
+}
+
+.compact-production-row > dl > div {
+  padding: 4px 7px;
+}
+
+.compact-production-row .compact-worker-slider {
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+  font-size: 10px;
+}
+
+.compact-worker-slider input[type='range'] {
+  width: 100%;
+  accent-color: #284f3d;
+}
+
+.worker-shortage dt,
+.worker-shortage dd,
+.allocation-balance.overallocated {
+  color: #a52f35 !important;
+}
+
+.contextual-build-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line, #ccd4c5);
+}
+
+.contextual-build-list .build-card {
+  width: 100%;
+}
+
+@media (max-width: 900px) {
+  .compact-production-row {
+    grid-template-columns: 1fr;
+  }
+
+  .compact-production-row .processing-card-open {
+    border-right: 0;
+    border-bottom: 1px solid var(--line, #ccd4c5);
+  }
+}
+
+.processing-worker-control.slider-only {
+  grid-template-columns: auto minmax(180px, 1fr);
+  width: min(100%, 520px);
+}
+
+.processing-worker-control.slider-only output {
+  min-width: 58px;
+  font-weight: 800;
+}
+
+.compact-production-row .compact-worker-slider {
+  grid-template-columns: auto minmax(80px, .7fr) minmax(140px, 1fr);
+  align-items: center;
+}
+
+.processing-worker-control.slider-only {
+  grid-template-columns: auto minmax(80px, .7fr) minmax(180px, 1fr);
+}
+
+.worker-coverage-track {
+  position: relative;
+  height: 7px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: #d8ddd6;
+}
+
+.worker-coverage-track i,
+.worker-coverage-track b {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+
+.worker-coverage-track i { left: 0; background: #315c47; }
+.worker-coverage-track b { background: #b83b42; }
+
+@media (max-width: 760px) {
+  .compact-production-row .compact-worker-slider,
+  .processing-worker-control.slider-only { grid-template-columns: 1fr; }
+}

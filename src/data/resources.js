@@ -1,4 +1,4 @@
-(function initializeResources(namespace) {
+﻿(function initializeResources(namespace) {
   const resourceCategories = [
     { id: 'building', label: 'Building Materials' },
     { id: 'industry', label: 'Metals and Industry' },
@@ -44,13 +44,56 @@
     { id: 'foxes', label: 'Foxes', category: 'animal', role: 'Fur only', outputs: ['fur'] }
   ];
 
+  function resourceSite(resourceId, label, group, workerType, role, id = `${resourceId}-site`) {
+    return {
+      id,
+      resourceId,
+      label,
+      group,
+      workerType,
+      role
+    };
+  }
+
+  const resourceSites = [
+    resourceSite('wood', "Woodcutters' Camp", 'Forestry', 'Laborers', 'Harvests wood from workable forest cover.'),
+    resourceSite('stone', 'Stone Quarry', 'Quarrying', 'Laborers', 'Cuts building stone from workable ground.'),
+    resourceSite('clay', 'Clay Pit', 'Pit', 'Laborers', 'Extracts clay for early housing and pottery later.'),
+    resourceSite('marble', 'Marble Quarry', 'Quarrying', 'Laborers', 'Cuts prestige stone for advanced buildings.'),
+    resourceSite('sand', 'Sand Pit', 'Pit', 'Laborers', 'Extracts sand for glass and simple construction.'),
+    resourceSite('iron', 'Iron Mine', 'Mining', 'Miners', 'Extracts iron ore for weapons and armor.'),
+    resourceSite('copper', 'Copper Mine', 'Mining', 'Miners', 'Extracts copper for bronze production later.'),
+    resourceSite('tin', 'Tin Mine', 'Mining', 'Miners', 'Extracts tin for bronze production later.'),
+    resourceSite('coal', 'Coal Mine', 'Mining', 'Miners', 'Extracts coal for smelting and fuel.'),
+    resourceSite('sulfur', 'Sulfur Mine', 'Mining', 'Miners', 'Extracts sulfur from volcanic ground.'),
+    resourceSite('gold', 'Gold Mine', 'Mining', 'Miners', 'Extracts gold from precious veins.'),
+    resourceSite('silver', 'Silver Mine', 'Mining', 'Miners', 'Extracts silver from precious veins.'),
+    resourceSite('diamonds', 'Gem Mine', 'Mining', 'Miners', 'Extracts diamonds from gem veins.'),
+    resourceSite('pearls', 'Pearl Extraction Site', 'Coastal Gathering', 'Divers', 'Harvests pearls from oyster beds.'),
+    resourceSite('salt', 'Saltworks', 'Coastal Gathering', 'Laborers', 'Collects salt for preservation and trade.'),
+    resourceSite('fish', 'Fishery', 'Fishing', 'Fishers', 'Catches fish from coast, rivers, or lakes.'),
+    resourceSite('spices', 'Spice Garden', 'Farming', 'Farmers', 'Cultivates spices where conditions allow.'),
+    resourceSite('wheat', 'Wheat Farm', 'Farming', 'Farmers', 'Grows wheat for bread production later.'),
+    resourceSite('vegetables', 'Vegetable Farm', 'Farming', 'Farmers', 'Grows vegetables for food variety.'),
+    resourceSite('fruit', 'Fruit Orchard', 'Farming', 'Farmers', 'Grows fruit for food and alcohol later.'),
+    resourceSite('cotton', 'Cotton Farm', 'Farming', 'Farmers', 'Grows cotton for clothing and bandages later.'),
+    resourceSite('herbs', 'Herb Farm', 'Gathering', 'Gatherers', 'Cultivates and gathers herbs for medicine later.'),
+    resourceSite('honey', 'Apiary', 'Gathering', 'Gatherers', 'Produces honey for food and medicine later.'),
+    resourceSite('cattle', 'Cattle Pasture', 'Pasture', 'Herders', 'Raises cattle for meat, milk, and leather.'),
+    resourceSite('sheep', 'Sheep Pasture', 'Pasture', 'Herders', 'Raises sheep for wool, meat, and some milk.'),
+    resourceSite('horses', 'Horse Pasture', 'Pasture', 'Herders', 'Raises horses for armies and transport.'),
+    resourceSite('deer', 'Deer Hunting Camp', 'Hunting', 'Hunters', 'Hunts deer for meat and leather.'),
+    resourceSite('foxes', 'Fox Trapping Camp', 'Hunting', 'Hunters', 'Traps foxes for fur only.')
+  ];
+
   const naturalTraits = [
     { id: 'river', label: 'River', role: 'Improves crops, fish, clay, supply, and can pass through Desert without creating High Fertility.' },
     { id: 'lake', label: 'Lake', role: 'Improves fertility, fish, clay, supply, and special water resources.' },
     { id: 'coast', label: 'Coast', role: 'Opens fish, salt, sand, and coastal resource conditions through direct adjacency to Ocean.' },
     { id: 'oasis', label: 'Oasis', role: 'Allows limited Desert farming, spices, cotton, and local supply.' },
     { id: 'high-fertility', label: 'High Fertility', role: 'Improves agricultural and animal output; never appears in Mountains, Desert, or Ocean.' },
-    { id: 'forest-density', label: 'Forest Density', role: 'Richer forest cover that improves wood, herbs, honey, deer, foxes, defense, and slows movement.' },
+    { id: 'forest-density', label: 'Forest Density', role: 'Dense cover found only in Forest provinces. It improves forest resources, defense, settlement, and supply while slowing movement.' },
+    { id: 'scattered-trees', label: 'Scattered Trees', role: "Sparse tree cover that only unlocks a low-productivity Woodcutters' Camp outside Forest provinces." },
     { id: 'mineral-vein', label: 'Mineral Vein', role: 'Opens or improves iron, copper, tin, and coal.' },
     { id: 'precious-vein', label: 'Precious Vein', role: 'Opens or improves gold and silver.' },
     { id: 'gem-vein', label: 'Gem Vein', role: 'Opens or improves diamonds.' },
@@ -66,6 +109,7 @@
     'Oasis': 'oasis',
     'High Fertility': 'high-fertility',
     'Forest Density': 'forest-density',
+    'Scattered Trees': 'scattered-trees',
     'Mineral Vein': 'mineral-vein',
     'Precious Vein': 'precious-vein',
     'Gem Vein': 'gem-vein',
@@ -124,7 +168,7 @@
   }
 
   const resourceTerrainRules = [
-    rule('mountains', 'wood', 0.2, ['forest-density']),
+    rule('mountains', 'wood', 0.2, ['scattered-trees']),
     rule('mountains', 'stone', 0.9),
     rule('mountains', 'marble', 0.8),
     rule('mountains', 'iron', 0.5, ['mineral-vein']),
@@ -136,11 +180,7 @@
     rule('mountains', 'silver', 0.3, ['precious-vein']),
     rule('mountains', 'diamonds', 0.3, ['gem-vein']),
     rule('mountains', 'fish', 0.5, ['coast', 'river', 'lake']),
-    rule('mountains', 'herbs', 0.2, ['forest-density']),
-    rule('mountains', 'honey', 0.2, ['forest-density']),
-    rule('mountains', 'deer', 0.2, ['forest-density']),
-
-    rule('hills', 'wood', 0.2, ['forest-density']),
+    rule('hills', 'wood', 0.2, ['scattered-trees']),
     rule('hills', 'stone', 0.5),
     rule('hills', 'clay', 0.5, ['river', 'lake']),
     rule('hills', 'iron', 0.05, ['mineral-vein']),
@@ -155,11 +195,10 @@
     rule('hills', 'vegetables', 0.5),
     rule('hills', 'fruit', 0.5),
     rule('hills', 'cotton', 0.2, ['river', 'lake']),
-    rule('hills', 'honey', 0.5, ['forest-density']),
     rule('hills', 'sheep', 0.5),
     rule('hills', 'horses', 0.5),
 
-    rule('plains', 'wood', 0.3, ['forest-density']),
+    rule('plains', 'wood', 0.3, ['scattered-trees']),
     rule('plains', 'clay', 0.75, ['river', 'lake']),
     rule('plains', 'pearls', 0.3, ['oyster-bed']),
     rule('plains', 'salt', 0.6, ['coast']),
@@ -174,10 +213,8 @@
     rule('plains', 'cattle', 1),
     rule('plains', 'sheep', 1),
     rule('plains', 'horses', 1),
-    rule('plains', 'deer', 0.2, ['forest-density']),
-    rule('plains', 'foxes', 0.2, ['forest-density']),
 
-    rule('forests', 'wood', 0.7),
+    rule('forests', 'wood', 1),
     rule('forests', 'clay', 0.5, ['river', 'lake']),
     rule('forests', 'pearls', 0.15, ['oyster-bed']),
     rule('forests', 'salt', 0.5, ['coast']),
@@ -187,6 +224,7 @@
     rule('forests', 'deer', 0.8),
     rule('forests', 'foxes', 0.8),
 
+    rule('desert', 'wood', 0.15, ['scattered-trees']),
     rule('desert', 'sand', 1),
     rule('desert', 'pearls', 0.5, ['oyster-bed']),
     rule('desert', 'salt', 0.65, ['coast']),
@@ -194,16 +232,12 @@
     rule('desert', 'spices', 0.8, ['river', 'oasis']),
     rule('desert', 'cotton', 0.6, ['river', 'oasis']),
 
-    rule('swamps', 'wood', 0.3, ['forest-density']),
+    rule('swamps', 'wood', 0.5, ['scattered-trees']),
     rule('swamps', 'clay', 1),
     rule('swamps', 'pearls', 0.3, ['oyster-bed']),
     rule('swamps', 'salt', 0.65, ['coast']),
     rule('swamps', 'fish', 0.5, ['coast', 'river', 'lake']),
     rule('swamps', 'cotton', 0.6),
-    rule('swamps', 'herbs', 0.3, ['forest-density']),
-    rule('swamps', 'honey', 0.25, ['forest-density']),
-    rule('swamps', 'deer', 0.25, ['forest-density']),
-    rule('swamps', 'foxes', 0.25, ['forest-density'])
   ];
 
   const resourceTraitEffects = Object.freeze({
@@ -295,6 +329,12 @@
     resourceCategories,
     resourceTypes,
     resourceById: Object.freeze(indexById(resourceTypes)),
+    resourceSites,
+    resourceSiteById: Object.freeze(indexById(resourceSites)),
+    resourceSiteByResourceId: Object.freeze(resourceSites.reduce((result, site) => {
+      result[site.resourceId] = site;
+      return result;
+    }, {})),
     naturalTraits,
     naturalTraitById: Object.freeze(indexById(naturalTraits)),
     traitLabelToId,
